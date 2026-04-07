@@ -1,0 +1,2288 @@
+{% extends "portal/base.html" %}
+{% block title %}Inventory{% endblock %}
+{% block app_title %}Inventory & stock{% endblock %}
+{% block titlebar_sub %}
+<span class="t-sub">{{ restaurant.name }}{% if staff %} · {{ staff.get_role_display }}{% else %} · Superadmin{% endif %}</span>
+{% endblock %}
+{% block titlebar_actions %}
+<form method="post" action="{% url 'portal:logout' %}" style="margin:0;">
+    {% csrf_token %}
+    <button type="submit" class="t-btn-ghost">Sign out</button>
+</form>
+{% endblock %}
+{% block nav_drawer %}
+<a href="{% url 'portal:dashboard' %}">Dashboard</a>
+<a href="{% url 'portal:inventory' %}" class="active">Inventory</a>
+<a href="{% url 'portal:menu' %}">Menu</a>
+{% if can_edit_restaurant %}
+<a href="{% url 'portal:restaurant_edit' %}">Outlet details</a>
+{% endif %}
+<a href="{% url 'web:home' %}">Public website</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.inv-cash-strip {
+    display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
+    padding: 10px 12px; margin-bottom: 12px; background: #fff; border: 1px solid var(--t-border);
+    font-size: 12px;
+}
+.inv-cash-strip strong { color: var(--t-title); }
+.inv-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.inv-tabs button {
+    min-height: 44px; padding: 0 14px; font-family: inherit; font-size: 13px;
+    border: 1px solid var(--t-border); background: #e4e4e4; cursor: pointer; border-radius: 2px;
+    color: #1a1a1a; -webkit-appearance: none; appearance: none;
+    -webkit-tap-highlight-color: transparent;
+}
+.inv-tabs button.active {
+    background: #b8d4ea; font-weight: 700; border-color: var(--t-primary); color: #0d3d5c;
+}
+.inv-tabs button:active:not(.active) { background: #cfcfcf; color: #1a1a1a; }
+.inv-panel { display: none; }
+.inv-panel.active { display: block; }
+#invToast {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    max-width: min(92vw, 420px); z-index: 400; padding: 12px 16px; font-size: 13px;
+    border: 1px solid var(--t-border); background: #fffde7; box-shadow: 0 4px 12px rgba(0,0,0,.15);
+    display: none;
+}
+#invToast.err { background: #fdeaea; }
+#invToast.ok { background: #e8f5e9; }
+.inv-search-wrap { position: relative; margin-bottom: 10px; }
+#invSearchResults {
+    position: absolute; left: 0; right: 0; top: 100%; z-index: 50;
+    max-height: 220px; overflow-y: auto; background: #fff; border: 1px solid var(--t-border);
+    display: none; box-shadow: 0 4px 10px rgba(0,0,0,.12);
+}
+#invSearchResults button {
+    display: block; width: 100%; text-align: left; padding: 10px 12px; border: 0; border-bottom: 1px solid #eee;
+    background: #fff; font-size: 13px; cursor: pointer; min-height: 44px;
+}
+.inv-muted { color: var(--t-muted); font-size: 12px; }
+.inv-money-input, #tblMaster .t-input, #tblLines .t-input {
+    color: #111 !important;
+    background: #fff !important;
+    border: 1px solid #666 !important;
+    border-radius: 2px;
+    font-size: 16px;
+}
+.inv-tag {
+    display: inline-block; font-size: 10px; padding: 2px 5px; margin-right: 3px;
+    background: #e3f2fd; border: 1px solid #90caf9; border-radius: 2px;
+}
+.inv-summary-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px;
+    margin: 12px 0; padding: 10px; background: #f5f5f5; border: 1px solid var(--t-border-light);
+    font-size: 12px;
+}
+.inv-summary-grid div span { display: block; color: var(--t-muted); font-size: 11px; }
+.inv-banner { padding: 10px 12px; margin: 10px 0; background: #e8f5e9; border: 1px solid #8cb89c; font-size: 13px; display: none; }
+.inv-banner.show { display: block; }
+.inv-prod-ph {
+    width: 44px; height: 44px; border-radius: 50%; padding: 0; border: 1px dashed #999;
+    background: #fafafa; cursor: pointer; overflow: hidden; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.inv-prod-ph img { width: 100%; height: 100%; object-fit: cover; }
+.inv-ph-placeholder { font-size: 18px; color: var(--t-muted); line-height: 1; }
+.inv-prod-ph-img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 1px solid var(--t-border); }
+.inv-vendor-ledger-strip {
+    position: sticky; top: 0; z-index: 6;
+    background: #f4f8fb; border: 1px solid var(--t-border);
+    padding: 10px 12px; margin: 0 0 10px; font-size: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.06);
+}
+.inv-vendor-ledger-strip strong { color: var(--t-title); }
+.inv-flow-block {
+    margin-top: 10px; padding: 10px 12px; background: #fafafa;
+    border: 1px solid var(--t-border-light); font-size: 12px; line-height: 1.55;
+    white-space: pre-line;
+}
+.inv-stock-alert {
+    display: inline-block; font-size: 10px; font-weight: 700; padding: 3px 8px;
+    border-radius: 3px; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.inv-stock-alert-ok { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
+.inv-stock-alert-low { background: #fff8e1; color: #e65100; border: 1px solid #ffcc80; }
+.inv-stock-alert-out { background: #ffebee; color: #b71c1c; border: 1px solid #ef9a9a; }
+.inv-iu-nested { width: 100%; font-size: 12px; margin: 0; border-collapse: collapse; }
+.inv-iu-nested th, .inv-iu-nested td { padding: 4px 6px; border: 1px solid var(--t-border-light); text-align: left; }
+.inv-iu-nested th { background: #f5f5f5; font-weight: 600; }
+tr.iu-bill-row td { vertical-align: top; }
+@media (max-width: 720px) {
+    #tblMaster thead { display: none; }
+    #tblMaster tbody tr {
+        display: block; border: 1px solid var(--t-border); margin-bottom: 10px; padding: 8px; background: #fff;
+    }
+    #tblMaster tbody td {
+        display: flex; justify-content: space-between; align-items: center; gap: 8px;
+        border: none; border-bottom: 1px solid #eee; padding: 8px 4px; text-align: right;
+    }
+    #tblMaster tbody td:last-child { border-bottom: 0; }
+    #tblMaster tbody td::before {
+        content: attr(data-label);
+        font-weight: 700; color: var(--t-muted); text-align: left; flex-shrink: 0;
+    }
+    #tblMaster tbody td[data-label="CP"] input,
+    #tblMaster tbody td[data-label="SP"] input {
+        width: 100%; min-width: 0; max-width: none; text-align: right;
+    }
+    #tblBills thead { display: none; }
+    #tblBills tbody tr {
+        display: block; border: 1px solid var(--t-border); margin-bottom: 10px; padding: 8px; background: #fff;
+    }
+    #tblBills tbody td {
+        display: flex; justify-content: space-between; align-items: center; gap: 8px;
+        border: none; border-bottom: 1px solid #eee; padding: 8px 4px; text-align: right;
+    }
+    #tblBills tbody td:last-child { border-bottom: 0; }
+    #tblBills tbody td::before {
+        content: attr(data-label);
+        font-weight: 700; color: var(--t-muted); text-align: left; flex-shrink: 0;
+    }
+    #tblOpenBills thead, #tblLedger thead, #tblPayHistory thead { font-size: 11px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="invToast" role="status" aria-live="polite"></div>
+
+<div class="inv-cash-strip" id="invCashStrip">
+    <div style="flex:1;min-width:200px;">
+        <div style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;">
+            <span><strong>Current balance</strong> (all channels, − out / + in): <span id="cashBalance">—</span></span>
+            <span><strong>Credit to pay suppliers</strong>: <span id="creditToPay">—</span></span>
+        </div>
+        <div class="inv-muted" style="margin-top:6px;font-size:11px;">
+            Cash <span id="walletCash">—</span> · Bank <span id="walletBank">—</span> · eSewa <span id="walletEsewa">—</span>
+        </div>
+    </div>
+    <button type="button" class="t-btn" id="btnCashRefresh" style="min-height:36px;">Refresh</button>
+</div>
+<input type="file" id="masterPhotoFile" accept="image/*" style="display:none;" />
+
+<div class="inv-tabs" role="tablist">
+    <button type="button" class="active" data-tab="master">Master list</button>
+    <button type="button" data-tab="receive">Receive stock</button>
+    <button type="button" data-tab="kitchen">Use, expense &amp; giveaways</button>
+    <button type="button" data-tab="bills">Activity &amp; balance</button>
+    <button type="button" data-tab="vendor">Vendor accounts</button>
+</div>
+
+<div id="panel-master" class="inv-panel active">
+    <div class="t-panel-box">
+        <div class="t-panel-head">Master items (menu vs ingredient)</div>
+        <div class="t-panel-body">
+            <p class="inv-muted">CP and SP are always in the <strong>same stock unit</strong> you choose (per kg, per litre, per piece, or per pack). Receipt line total = <strong>qty × unit CP</strong> (qty must be in that unit — e.g. 0.5 kg × NPR/kg). <strong>Menu</strong> = sold to customers; <strong>Ing</strong> = kitchen only (hide selling price). Packed + “SP per piece” = CP per pack, SP per stick/sachet.</p>
+            {% if can_edit_master %}
+            <div id="masterEditPanel" class="t-panel-box" style="display:none;margin-bottom:12px;">
+                <div class="t-panel-head">Edit item <span id="meTitle" class="inv-muted"></span></div>
+                <div class="t-panel-body" style="display:grid;gap:10px;max-width:420px;">
+                    <input class="t-input inv-money-input" id="meName" placeholder="Name" />
+                    <select class="t-input inv-money-input" id="meUnit"></select>
+                    <p class="inv-muted" id="meUnitHint" style="margin:0;font-size:11px;"></p>
+                    <div id="mePackWrap" style="display:none;">
+                        <label class="inv-muted" style="font-size:11px;">Pieces per pack</label>
+                        <input class="t-input inv-money-input" id="mePack" type="number" placeholder="e.g. 20" />
+                    </div>
+                    <label id="meSpPerPieceWrap" style="display:none;align-items:center;gap:8px;font-weight:normal;"><input type="checkbox" id="meSpPerPiece" /> SP is per piece (CP per pack)</label>
+                    <label style="display:flex;align-items:center;gap:8px;font-weight:normal;"><input type="checkbox" id="meMenu" /> Sold as menu (customer price)</label>
+                    <label style="display:flex;align-items:center;gap:8px;font-weight:normal;"><input type="checkbox" id="meIng" /> Used as ingredient / kitchen</label>
+                    <label id="meShowSiteWrap" style="display:flex;align-items:center;gap:8px;font-weight:normal;"><input type="checkbox" id="meShowSite" /> Show on public menu</label>
+                    <div class="t-actions">
+                        <button type="button" class="t-btn t-btn-primary" id="btnMeSave">Save item</button>
+                        <button type="button" class="t-btn" id="btnMeCancel">Cancel</button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            <div class="t-actions" style="margin-bottom:10px;">
+                <button type="button" class="t-btn t-btn-primary" id="btnReloadMaster">Refresh list</button>
+            </div>
+            <div class="t-table-wrap">
+                <table class="t-table" id="tblMaster">
+                    <thead><tr><th>Photo</th><th>#</th><th>Name</th><th>Type</th><th>Public site</th><th>On hand</th><th>CP</th><th>SP</th>{% if can_edit_master %}<th>Edit</th><th>Prices</th>{% endif %}</tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="panel-receive" class="inv-panel">
+    <div class="inv-banner" id="invPostedBanner"></div>
+    <div class="t-panel-box">
+        <div class="t-panel-head">Receive stock</div>
+        <div class="t-panel-body">
+            <p class="inv-muted" id="billStatusMsg"><strong>Choose a supplier</strong> (purchase &amp; AP) or <strong>free stock-in</strong> (no supplier bill / no payable). Add lines, then Post.</p>
+            <div class="t-actions">
+                <button type="button" class="t-btn" id="btnStartFresh" style="display:none;">Discard draft &amp; clear</button>
+            </div>
+            <div id="billHeader" class="inv-muted" style="margin:8px 0;"></div>
+
+            <div style="margin:12px 0;">
+                <label>Supplier</label>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+                    <select class="t-input inv-money-input" id="billVendor" style="flex:1;min-width:180px;"></select>
+                    <input class="t-input inv-money-input" id="newVendorName" placeholder="New vendor name" style="flex:1;min-width:140px;" />
+                    <button type="button" class="t-btn" id="btnAddVendor">Add vendor</button>
+                </div>
+            </div>
+
+            <hr style="border:0;border-top:1px solid var(--t-border-light);margin:16px 0;" />
+
+            <div class="inv-search-wrap">
+                <label>Search item (name or #)</label>
+                <input type="search" class="t-input inv-money-input" id="invSearch" autocomplete="off" placeholder="Type to search…" />
+                <div id="invSearchResults"></div>
+            </div>
+
+            <div class="t-actions" style="margin-top:8px;">
+                <button type="button" class="t-btn" id="btnToggleQuickAdd" style="min-height:36px;font-size:12px;">+ New item (not in list)</button>
+            </div>
+
+            <div id="qaPanel" class="t-panel-box" style="margin-top:10px;display:none;">
+                <div class="t-panel-head">Quick add — free line = CP 0</div>
+                <div class="t-panel-body">
+                    <div style="display:grid;gap:8px;">
+                        <input class="t-input inv-money-input" id="qaName" placeholder="Item name *" />
+                        <select class="t-input inv-money-input" id="qaUnit"></select>
+                        <p class="inv-muted" id="qaUnitHint" style="margin:0;font-size:11px;"></p>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                            <div><span class="inv-muted" style="font-size:11px;" id="qaCpLbl">CP</span><input class="t-input inv-money-input" id="qaCp" type="number" step="0.01" placeholder="0" value="0" /></div>
+                            <div id="qaSpWrap"><span class="inv-muted" style="font-size:11px;" id="qaSpLbl">SP</span><input class="t-input inv-money-input" id="qaSp" type="number" step="0.01" placeholder="0" value="0" /></div>
+                        </div>
+                        <div id="qaPackWrap" style="display:none;"><span class="inv-muted" style="font-size:11px;">Pieces per pack</span><input class="t-input inv-money-input" id="qaPack" type="number" placeholder="e.g. 20" /></div>
+                        <label id="qaSpPerPieceWrap" style="display:none;align-items:center;gap:8px;font-weight:normal;">
+                            <input type="checkbox" id="qaSpPerPiece" /> SP per piece (packed goods; CP per pack)
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;font-weight:normal;">
+                            <input type="checkbox" id="qaMenu" /> Sold as menu / retail (needs SP)
+                        </label>
+                        <label id="qaShowSiteWrap" style="display:flex;align-items:center;gap:8px;font-weight:normal;">
+                            <input type="checkbox" id="qaShowSite" checked /> Show on public menu
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;font-weight:normal;">
+                            <input type="checkbox" id="qaIng" checked /> Used as ingredient / kitchen
+                        </label>
+                        <button type="button" class="t-btn t-btn-primary" id="btnQuickAdd">Create &amp; select</button>
+                    </div>
+                </div>
+            </div>
+
+            <p class="inv-muted" id="selItemLabel">No item selected.</p>
+            <p class="inv-muted" id="lnReceiveHint" style="display:none;margin:6px 0;font-size:11px;max-width:520px;"></p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:400px;">
+                <div>
+                    <label id="lnQtyLabel">Qty</label>
+                    <input class="t-input inv-money-input" id="lnQty" type="number" step="0.01" value="1" />
+                </div>
+                <div>
+                    <label id="lnCpLabel">Unit CP</label>
+                    <input class="t-input inv-money-input" id="lnCp" type="number" step="0.01" value="0" />
+                </div>
+            </div>
+            <p class="inv-muted" id="lnLinePreview" style="margin:6px 0 0;font-size:11px;"></p>
+            <div class="t-actions" style="margin-top:10px;">
+                <button type="button" class="t-btn t-btn-primary" id="btnAddLine">Add line</button>
+            </div>
+
+            <h4 style="margin:16px 0 8px;font-size:13px;">Lines</h4>
+            <div class="t-table-wrap">
+                <table class="t-table" id="tblLines"><thead><tr><th>Item</th><th>Qty</th><th>CP</th><th>Line total</th><th></th></tr></thead><tbody></tbody></table>
+            </div>
+
+            <div id="receiveMonetaryWrap" style="display:none;margin-top:14px;">
+                <div class="inv-summary-grid" id="billSummary" style="display:none;">
+                    <div><span>Line subtotal</span><strong id="sumSub">0.00</strong></div>
+                    <div><span>Discount</span><strong id="sumDisc">0.00</strong></div>
+                    <div><span>Net to vendor</span><strong id="sumNet">0.00</strong></div>
+                    <div><span>Paid now (total)</span><strong id="sumPaid">0.00</strong></div>
+                    <div><span>By channel</span><strong id="sumPaidSplit" class="inv-muted" style="font-weight:600;">—</strong></div>
+                    <div><span>Balance due (credit you owe)</span><strong id="sumDue">0.00</strong></div>
+                </div>
+                <p class="inv-muted" id="billPayHint" style="display:none;margin-top:8px;">
+                    <strong>Discount</strong> and <strong>payment</strong> apply to this receipt (saved automatically). Choose cash, bank, eSewa, or split. Net − paid = due.
+                </p>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:420px;margin-top:10px;">
+                    <div>
+                        <label>Bill discount</label>
+                        <input class="t-input inv-money-input" id="billDiscount" type="number" step="0.01" value="0" />
+                    </div>
+                    <div>
+                        <label>Pay from</label>
+                        <select class="t-input inv-money-input" id="billPayMode">
+                            <option value="cash">Cash</option>
+                            <option value="bank">Bank</option>
+                            <option value="esewa">eSewa</option>
+                            <option value="split">Split</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="max-width:420px;margin-top:8px;">
+                    <label id="billPaidLabel">Amount paid</label>
+                    <input class="t-input inv-money-input" id="billPaid" type="number" step="0.01" value="0" />
+                </div>
+                <div id="billSplitWrap" style="display:none;grid-template-columns:1fr 1fr 1fr;gap:8px;max-width:420px;margin-top:8px;">
+                    <div><label>Cash</label><input class="t-input inv-money-input bill-split" id="billPaidCash" type="number" step="0.01" value="0" /></div>
+                    <div><label>Bank</label><input class="t-input inv-money-input bill-split" id="billPaidBank" type="number" step="0.01" value="0" /></div>
+                    <div><label>eSewa</label><input class="t-input inv-money-input bill-split" id="billPaidEsewa" type="number" step="0.01" value="0" /></div>
+                </div>
+            </div>
+
+            <div class="t-actions" style="margin-top:14px;">
+                <button type="button" class="t-btn t-btn-primary" id="btnPostBill">Post (update stock)</button>
+                <button type="button" class="t-btn" id="btnDelBill" style="border-color:var(--t-danger);color:var(--t-danger);">Delete draft</button>
+            </div>
+            <p class="inv-muted" style="margin-top:8px;">Further payments and <strong>returns</strong> to this supplier: <strong>Vendor accounts</strong>. Full money movement: <strong>Activity &amp; balance</strong>.</p>
+
+            <hr style="border:0;border-top:1px solid var(--t-border-light);margin:20px 0;" />
+            <h4 style="margin:0 0 8px;font-size:13px;">Stock-in transaction log</h4>
+            <p class="inv-muted">Each row is <strong>one real posted line</strong> on a purchase bill: date/time of the receipt, bill, vendor, item, quantity and cost <em>as recorded on that transaction</em>. New stock-ins appear as separate rows (same item on another day = another line).</p>
+            <div class="t-actions" style="flex-wrap:wrap;margin-bottom:10px;align-items:flex-end;">
+                <button type="button" class="t-btn t-btn-primary" id="btnReloadStockIn">Refresh</button>
+                <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
+                    <span class="inv-muted">Period</span>
+                    <select class="t-input inv-money-input" id="stockInDays" style="min-width:140px;">
+                        <option value="">All time</option>
+                        <option value="7">Last 7 days</option>
+                        <option value="30">Last 30 days</option>
+                        <option value="90">Last 90 days</option>
+                    </select>
+                </label>
+                <div style="flex:1;min-width:200px;">
+                    <label class="inv-muted" style="display:block;margin-bottom:4px;font-size:11px;">Search this log</label>
+                    <input type="search" class="t-input inv-money-input" id="stockInTxnFilter" placeholder="Bill, vendor, item, #…" autocomplete="off" />
+                </div>
+            </div>
+            <div class="t-table-wrap">
+                <table class="t-table" id="tblStockInLines">
+                    <thead><tr><th>When</th><th>Bill</th><th>Vendor</th><th>Item</th><th>Qty in</th><th>Unit CP</th><th>Line total</th><th>Note</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <details style="margin-top:18px;" id="stockInRollupDetails">
+                <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--t-title);">Optional: roll-up by product (current on-hand summary)</summary>
+                <p class="inv-muted" style="margin:10px 0 8px;">Merged totals for the same period filter — not a transaction ledger. <strong>Remaining</strong> and <strong>status</strong> are <em>today’s</em> stock (LOW if &lt; 5, OUT if 0).</p>
+                <div style="max-width:320px;margin-bottom:8px;">
+                    <label class="inv-muted" style="display:block;margin-bottom:4px;font-size:11px;">Filter roll-up</label>
+                    <input type="search" class="t-input inv-money-input" id="stockInByItemFilter" placeholder="Name or #…" autocomplete="off" />
+                </div>
+                <div class="t-table-wrap">
+                    <table class="t-table" id="tblStockInByItem">
+                        <thead><tr><th>#</th><th>Item</th><th>Total qty (period)</th><th>Lines</th><th>On hand now</th><th>Status</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </details>
+        </div>
+    </div>
+</div>
+
+<div id="panel-kitchen" class="inv-panel">
+    <div class="t-panel-box">
+        <div class="t-panel-head">Ingredient use, expenses &amp; giveaways</div>
+        <div class="t-panel-body">
+            <p class="inv-muted">Creates <strong>one posted bill</strong> per save. Add several lines for a giveaway or mixed expense — each bill groups its items. Stock drops when you post.</p>
+            <div class="inv-search-wrap" style="position:relative;">
+                <label>Search item</label>
+                <input type="search" class="t-input inv-money-input" id="iuSearch" autocomplete="off" placeholder="Name or #…" />
+                <div id="iuSearchResults" style="position:absolute;left:0;right:0;top:100%;z-index:50;max-height:200px;overflow-y:auto;background:#fff;border:1px solid var(--t-border);display:none;box-shadow:0 4px 10px rgba(0,0,0,.12);"></div>
+            </div>
+            <p class="inv-muted" id="iuSelLabel" style="margin-top:8px;">No item selected.</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:420px;margin-top:8px;">
+                <div><label>Qty for this line</label><input class="t-input inv-money-input" id="iuQty" type="number" step="0.01" value="1" /></div>
+                <div style="grid-column:1/-1;"><label>Line note (optional)</label><input class="t-input inv-money-input" id="iuLineNote" placeholder="e.g. batch, recipient" /></div>
+            </div>
+            <div class="t-actions" style="margin-top:10px;flex-wrap:wrap;">
+                <button type="button" class="t-btn t-btn-primary" id="btnIuAddToList">Add to list</button>
+                <button type="button" class="t-btn" id="btnIuClearList">Clear list</button>
+            </div>
+            <h5 style="font-size:12px;margin:14px 0 6px;">Lines on this bill <span class="inv-muted">(same reason &amp; note below)</span></h5>
+            <div class="t-table-wrap">
+                <table class="t-table" id="tblIuBatch">
+                    <thead><tr><th>#</th><th>Item</th><th>Qty</th><th>Line note</th><th></th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:420px;margin-top:12px;">
+                <div style="grid-column:1/-1;"><label>Reason <span class="inv-muted">(whole bill)</span></label><select class="t-input inv-money-input" id="iuReason"></select></div>
+            </div>
+            <div style="max-width:420px;margin-top:8px;">
+                <label>Bill note (optional)</label>
+                <input class="t-input inv-money-input" id="iuNotes" placeholder="e.g. event name, staff meal" />
+            </div>
+            <div class="t-actions" style="margin-top:10px;">
+                <button type="button" class="t-btn t-btn-primary" id="btnIuSave">Post bill &amp; remove stock</button>
+            </div>
+            <h4 style="font-size:13px;margin:18px 0 8px;">Recent bills <span class="inv-muted">(one row per bill, items inside)</span></h4>
+            <div class="t-table-wrap">
+                <table class="t-table" id="tblIngredientUses">
+                    <thead><tr><th>When</th><th>Bill</th><th>Items</th><th>Reason</th><th>Note</th><th>Receipt</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="panel-bills" class="inv-panel">
+    <div class="t-panel-box">
+        <div class="t-panel-head">Activity &amp; balance (all suppliers)</div>
+        <div class="t-panel-body">
+            <p class="inv-muted">Newest first. Balance column: negative = you owe the supplier.</p>
+            <button type="button" class="t-btn" id="btnReloadBills">Refresh</button>
+            <div class="inv-flow-block inv-muted" id="billFeedSummary" style="margin-top:10px;"></div>
+            <div class="t-table-wrap" style="margin-top:10px;">
+                <table class="t-table" id="tblBills">
+                    <thead><tr><th>When</th><th>Type</th><th>Vendor</th><th>Reference</th><th>Debit</th><th>Credit</th><th>Balance</th><th>Detail</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="panel-vendor" class="inv-panel">
+    <div class="t-panel-box">
+        <div class="t-panel-head">Vendor accounts — pay open bills &amp; ledger</div>
+        <div class="t-panel-body">
+            <p class="inv-muted">Public menu API: <code>/api/inventory/public-menu/?restaurant={{ restaurant.id }}</code></p>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin:12px 0;">
+                <div style="flex:1;min-width:200px;">
+                    <label>Vendor</label>
+                    <select class="t-input inv-money-input" id="vpVendor"></select>
+                </div>
+                <div>
+                    <span class="inv-muted">Open balance (you owe)</span><br /><strong id="vpOpenBal">—</strong>
+                </div>
+                <button type="button" class="t-btn" id="btnVpRefresh">Refresh</button>
+            </div>
+            <h4 style="font-size:13px;margin:16px 0 8px;">Open purchase bills</h4>
+            <div class="t-table-wrap">
+                <table class="t-table" id="tblOpenBills">
+                    <thead><tr><th>Bill</th><th>Net</th><th>Paid</th><th>Due</th><th>Pay now</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin:12px 0;">
+                <div>
+                    <label>Payment total</label>
+                    <input class="t-input inv-money-input" type="number" step="0.01" id="vpPayTotal" style="max-width:140px;" value="0" />
+                </div>
+                <div>
+                    <label>From</label>
+                    <select class="t-input inv-money-input" id="vpPayMode" style="min-width:120px;">
+                        <option value="cash">Cash</option>
+                        <option value="bank">Bank</option>
+                        <option value="esewa">eSewa</option>
+                        <option value="split">Split</option>
+                    </select>
+                </div>
+                <button type="button" class="t-btn" id="btnVpFifo">Fill oldest first (FIFO)</button>
+                <button type="button" class="t-btn t-btn-primary" id="btnVpRecord">Record payment</button>
+            </div>
+            <div id="vpSplitWrap" style="display:none;grid-template-columns:repeat(3,1fr);gap:8px;max-width:420px;margin-bottom:10px;">
+                <div><label>VP cash</label><input class="t-input inv-money-input" id="vpPaidCash" type="number" step="0.01" value="0" /></div>
+                <div><label>VP bank</label><input class="t-input inv-money-input" id="vpPaidBank" type="number" step="0.01" value="0" /></div>
+                <div><label>VP eSewa</label><input class="t-input inv-money-input" id="vpPaidEsewa" type="number" step="0.01" value="0" /></div>
+            </div>
+            <p class="inv-muted" id="vpPayNote"></p>
+            <div>
+                <label>Payment note (optional)</label>
+                <input class="t-input inv-money-input" id="vpPayNotes" placeholder="e.g. bank ref, chq #" style="max-width:100%;" />
+            </div>
+
+            <h4 style="font-size:13px;margin:24px 0 8px;">Return to supplier</h4>
+            <p class="inv-muted">Only items with <strong>stock on hand &gt; 0</strong> are listed. Optionally limit to lines from a purchase bill (id or code e.g. B1-0000001).</p>
+            <div class="t-actions" style="margin-bottom:10px;">
+                <button type="button" class="t-btn t-btn-primary" id="btnRetStart">Start return draft</button>
+                <button type="button" class="t-btn" id="btnRetDiscard" style="display:none;">Discard return</button>
+            </div>
+            <p class="inv-muted" id="retBillLabel" style="display:none;"></p>
+            <div id="retBlock" style="display:none;">
+                <div style="margin-bottom:10px;">
+                    <label>Purchase bill filter (optional)</label>
+                    <input class="t-input inv-money-input" id="retBillFilter" placeholder="Bill id or code (e.g. B1-0000123)" />
+                </div>
+                <div class="inv-search-wrap" style="position:relative;">
+                    <label>Search item to return (in stock only)</label>
+                    <input type="search" class="t-input inv-money-input" id="retSearch" autocomplete="off" placeholder="Name or product #…" />
+                    <div id="retSearchResults" style="position:absolute;left:0;right:0;top:100%;z-index:50;max-height:200px;overflow-y:auto;background:#fff;border:1px solid var(--t-border);display:none;box-shadow:0 4px 10px rgba(0,0,0,.12);"></div>
+                </div>
+                <p class="inv-muted" id="retSelLabel">No item selected.</p>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:400px;">
+                    <div><label>Qty</label><input class="t-input inv-money-input" id="retQty" type="number" step="0.01" value="1" /></div>
+                    <div><label>Unit credit (CP)</label><input class="t-input inv-money-input" id="retCp" type="number" step="0.01" value="0" /></div>
+                </div>
+                <div class="t-actions" style="margin-top:8px;">
+                    <button type="button" class="t-btn t-btn-primary" id="btnRetAddLine">Add line</button>
+                </div>
+                <div id="retPayWrap" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--t-border-light);max-width:420px;">
+                    <p class="inv-muted" style="margin-bottom:8px;">If the supplier refunds you, record amount received and channel (optional).</p>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+                        <div>
+                            <label>Refund from</label>
+                            <select class="t-input inv-money-input" id="retPayMode">
+                                <option value="cash">Cash</option>
+                                <option value="bank">Bank</option>
+                                <option value="esewa">eSewa</option>
+                                <option value="split">Split</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label id="retPaidLabel">Refund received</label>
+                            <input class="t-input inv-money-input" id="retRefundTotal" type="number" step="0.01" value="0" />
+                        </div>
+                    </div>
+                    <div id="retSplitWrap" style="display:none;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                        <div><label>Cash</label><input class="t-input inv-money-input ret-split" id="retPaidCash" type="number" step="0.01" value="0" /></div>
+                        <div><label>Bank</label><input class="t-input inv-money-input ret-split" id="retPaidBank" type="number" step="0.01" value="0" /></div>
+                        <div><label>eSewa</label><input class="t-input inv-money-input ret-split" id="retPaidEsewa" type="number" step="0.01" value="0" /></div>
+                    </div>
+                </div>
+                <h4 style="font-size:13px;margin:12px 0 6px;">Return lines</h4>
+                <div class="t-table-wrap">
+                    <table class="t-table" id="tblRetLines"><thead><tr><th>Item</th><th>Qty</th><th>CP</th><th>Line</th><th></th></tr></thead><tbody></tbody></table>
+                </div>
+                <div class="t-actions" style="margin-top:10px;">
+                    <button type="button" class="t-btn t-btn-primary" id="btnRetPost">Post return (update stock)</button>
+                </div>
+            </div>
+
+            <h4 style="font-size:13px;margin:20px 0 8px;">Recent payments (VP-)</h4>
+            <div class="t-table-wrap">
+                <table class="t-table" id="tblPayHistory">
+                    <thead><tr><th>Code</th><th>Amount</th><th>Applied to</th><th>When</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <h4 style="font-size:13px;margin:20px 0 8px;">Supplier ledger (debit / credit / balance)</h4>
+            <p class="inv-muted">Oldest first; balance starts at 0 — <strong>negative = you owe</strong>. Debit = purchase; credit = paid on receipt, VP, or return.</p>
+            <div id="vendorLedgerStrip" class="inv-vendor-ledger-strip" style="display:none;"></div>
+            <div class="t-table-wrap">
+                <table class="t-table" id="tblLedger">
+                    <thead><tr><th>Date</th><th>Kind</th><th>Ref</th><th>Debit</th><th>Credit</th><th>Balance</th><th>Note</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var CSRF = "{{ csrf_token }}";
+    var API = "/api/inventory/";
+    var OUTLET_ID = {{ restaurant.id }};
+    var RESTAURANT_NAME = "{{ restaurant.name|escapejs }}";
+    var CAN_EDIT = {{ can_edit_master|yesno:"true,false" }};
+    var currentBillId = null;
+    var currentBillKind = null;
+    var currentBillVendorId = null;
+    var selectedItem = null;
+    var searchTimer = null;
+    var paySaveTimer = null;
+    var returnBillId = null;
+    var retSelectedItem = null;
+    var retSearchTimer = null;
+    var meEditingId = null;
+    var retPaySaveTimer = null;
+    var iuSelectedItem = null;
+    var iuSearchTimer = null;
+    var stockInByItemCache = [];
+    var stockInTxnCache = [];
+    var iuBatchLines = [];
+    var metaUnitPricing = {};
+
+    function fmt2(x) {
+        var n = parseFloat(x);
+        if (isNaN(n)) return "0.00";
+        return (Math.round(n * 100) / 100).toFixed(2);
+    }
+
+    function clampInput2(el) {
+        if (!el || el.type !== "number") return;
+        var n = parseFloat(el.value);
+        if (!isNaN(n)) el.value = fmt2(n);
+    }
+
+    function toast(msg, cls) {
+        var el = document.getElementById("invToast");
+        el.textContent = msg;
+        el.className = cls || "";
+        el.style.display = "block";
+        clearTimeout(el._t);
+        el._t = setTimeout(function () { el.style.display = "none"; }, 4500);
+    }
+
+    function api(path, opts) {
+        opts = opts || {};
+        var headers = Object.assign({
+            "Content-Type": "application/json",
+            "X-CSRFToken": CSRF
+        }, opts.headers || {});
+        return fetch(API + path, Object.assign({ credentials: "same-origin", headers: headers }, opts))
+            .then(function (r) {
+                return r.text().then(function (t) {
+                    var j = null;
+                    try { j = t ? JSON.parse(t) : null; } catch (e) { j = { detail: t }; }
+                    if (!r.ok) {
+                        var m = j && j.detail;
+                        if (typeof m !== "string") m = JSON.stringify(m || j);
+                        throw new Error(m || r.statusText);
+                    }
+                    return j;
+                });
+            });
+    }
+
+    function loadCashSummary() {
+        api("cash-summary/?days=30").then(function (d) {
+            var bal = document.getElementById("cashBalance");
+            var cr = document.getElementById("creditToPay");
+            if (bal) bal.textContent = d.current_balance != null ? d.current_balance : "—";
+            if (cr) cr.textContent = d.credit_to_pay != null ? d.credit_to_pay : "—";
+            var wc = document.getElementById("walletCash");
+            var wb = document.getElementById("walletBank");
+            var we = document.getElementById("walletEsewa");
+            if (wc) wc.textContent = d.wallet_cash != null ? d.wallet_cash : "—";
+            if (wb) wb.textContent = d.wallet_bank != null ? d.wallet_bank : "—";
+            if (we) we.textContent = d.wallet_esewa != null ? d.wallet_esewa : "—";
+        }).catch(function () {
+            ["cashBalance", "creditToPay", "walletCash", "walletBank", "walletEsewa"].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) el.textContent = "—";
+            });
+        });
+    }
+    document.getElementById("btnCashRefresh").addEventListener("click", loadCashSummary);
+
+    document.querySelectorAll(".inv-tabs button").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            document.querySelectorAll(".inv-tabs button").forEach(function (b) { b.classList.remove("active"); });
+            btn.classList.add("active");
+            var tab = btn.getAttribute("data-tab");
+            document.querySelectorAll(".inv-panel").forEach(function (p) { p.classList.remove("active"); });
+            document.getElementById("panel-" + tab).classList.add("active");
+            if (tab === "bills") loadBills();
+            if (tab === "vendor") loadVendorPanel();
+            if (tab === "receive") loadStockIncoming();
+            if (tab === "kitchen") loadIngredientUses();
+        });
+    });
+
+    function fillUnitSelect(selId) {
+        return api("meta/").then(function (m) {
+            var sel = document.getElementById(selId);
+            if (!sel) return;
+            sel.innerHTML = "";
+            (m.unit_types || []).forEach(function (u) {
+                var o = document.createElement("option");
+                o.value = u.value;
+                o.textContent = u.label;
+                sel.appendChild(o);
+            });
+        });
+    }
+
+    function hintForUnit(ut) {
+        return metaUnitPricing[ut] || {};
+    }
+
+    function syncQuickAddPricingUI() {
+        var utEl = document.getElementById("qaUnit");
+        var ut = utEl ? utEl.value : "piece";
+        var h = hintForUnit(ut);
+        var qh = document.getElementById("qaUnitHint");
+        if (qh) qh.textContent = [h.qty_hint, h.line_cost_hint].filter(Boolean).join(" ");
+        var cpL = document.getElementById("qaCpLbl");
+        var spL = document.getElementById("qaSpLbl");
+        if (cpL) cpL.textContent = (h.cp_label || "CP") + " (NPR)";
+        if (spL) spL.textContent = (h.sp_label || "SP") + " (NPR)";
+        var sold = document.getElementById("qaMenu") && document.getElementById("qaMenu").checked;
+        var spWrap = document.getElementById("qaSpWrap");
+        var showWrap = document.getElementById("qaShowSiteWrap");
+        if (spWrap) spWrap.style.display = sold ? "block" : "none";
+        if (showWrap) showWrap.style.display = sold ? "flex" : "none";
+        var pk = document.getElementById("qaPackWrap");
+        if (pk) pk.style.display = ut === "packed" ? "block" : "none";
+        var spp = document.getElementById("qaSpPerPieceWrap");
+        if (spp) spp.style.display = sold && ut === "packed" ? "flex" : "none";
+        if (!sold) {
+            var sp = document.getElementById("qaSp");
+            if (sp) sp.value = "0";
+        }
+    }
+
+    function syncMePricingUI() {
+        var utEl = document.getElementById("meUnit");
+        var ut = utEl ? utEl.value : "piece";
+        var h = hintForUnit(ut);
+        var el = document.getElementById("meUnitHint");
+        if (el) el.textContent = [h.qty_hint, h.ingredient_hint].filter(Boolean).join(" ");
+        var pw = document.getElementById("mePackWrap");
+        if (pw) pw.style.display = ut === "packed" ? "block" : "none";
+        var spw = document.getElementById("meSpPerPieceWrap");
+        if (spw) {
+            spw.style.display = ut === "packed" ? "flex" : "none";
+            if (ut !== "packed") {
+                var cb = document.getElementById("meSpPerPiece");
+                if (cb) cb.checked = false;
+            }
+        }
+        var sw = document.getElementById("meShowSiteWrap");
+        var menuOn = document.getElementById("meMenu") && document.getElementById("meMenu").checked;
+        if (sw) sw.style.display = menuOn ? "flex" : "none";
+    }
+
+    function updateReceiveHints(it) {
+        var el = document.getElementById("lnReceiveHint");
+        var prev = document.getElementById("lnLinePreview");
+        if (!it) {
+            if (el) { el.style.display = "none"; el.textContent = ""; }
+            if (prev) prev.textContent = "";
+            return;
+        }
+        var h = it.pricing || hintForUnit(it.unit_type);
+        if (el) {
+            el.style.display = "block";
+            el.textContent = [h.qty_hint, h.line_cost_hint].filter(Boolean).join(" ");
+        }
+        var ql = document.getElementById("lnQtyLabel");
+        var cl = document.getElementById("lnCpLabel");
+        if (ql) ql.textContent = "Qty (" + (h.stock_unit || "unit") + ")";
+        if (cl) cl.textContent = "Unit CP (" + (h.cp_label || "per unit") + ")";
+        updateLinePreview();
+    }
+
+    function updateLinePreview() {
+        var prev = document.getElementById("lnLinePreview");
+        if (!prev || !selectedItem) {
+            if (prev) prev.textContent = "";
+            return;
+        }
+        var q = parseFloat(document.getElementById("lnQty").value) || 0;
+        var cp = parseFloat(document.getElementById("lnCp").value) || 0;
+        var tot = (Math.round(q * cp * 100) / 100).toFixed(2);
+        var h = selectedItem.pricing || hintForUnit(selectedItem.unit_type);
+        prev.textContent = "Line total ≈ " + tot + " NPR (= qty × unit CP). " + (h.line_cost_hint || "");
+    }
+
+    function loadMeta() {
+        return fillUnitSelect("qaUnit")
+            .then(function () { return fillUnitSelect("meUnit"); })
+            .then(function () {
+                return api("meta/").then(function (m) {
+                    metaUnitPricing = m.unit_pricing_meta || {};
+                    syncQuickAddPricingUI();
+                    syncMePricingUI();
+                    var sel = document.getElementById("iuReason");
+                    if (!sel || !(m.ingredient_use_reasons || []).length) return;
+                    sel.innerHTML = "";
+                    (m.ingredient_use_reasons || []).forEach(function (r) {
+                        var o = document.createElement("option");
+                        o.value = r.value;
+                        o.textContent = r.label;
+                        sel.appendChild(o);
+                    });
+                });
+            })
+            .catch(function (e) { toast(String(e.message), "err"); });
+    }
+
+    function stockAlertLabel(a) {
+        if (a === "out") return "OUT";
+        if (a === "low") return "LOW";
+        return "OK";
+    }
+
+    function stockAlertBadgeHtml(a) {
+        var cls = a === "out" ? "out" : a === "low" ? "low" : "ok";
+        return '<span class="inv-stock-alert inv-stock-alert-' + cls + '">' + escapeHtml(stockAlertLabel(a)) + "</span>";
+    }
+
+    function stockInTxnRowSearchText(r) {
+        return [
+            fmtWhen(r.occurred_at),
+            r.bill_code,
+            r.display_reference || "",
+            r.vendor_name,
+            "#" + r.product_num,
+            r.item_name,
+            r.line_note || ""
+        ].join(" ").toLowerCase();
+    }
+
+    function renderStockInTxnFromCache() {
+        var tb = document.querySelector("#tblStockInLines tbody");
+        if (!tb) return;
+        var qv = (document.getElementById("stockInTxnFilter") && document.getElementById("stockInTxnFilter").value || "").trim().toLowerCase();
+        var rows = stockInTxnCache;
+        if (qv) {
+            rows = rows.filter(function (r) { return stockInTxnRowSearchText(r).indexOf(qv) !== -1; });
+        }
+        tb.innerHTML = "";
+        rows.forEach(function (r) {
+            var tr = document.createElement("tr");
+            tr.setAttribute("data-line-id", String(r.line_id));
+            var note = (r.line_note && String(r.line_note).trim()) ? escapeHtml(r.line_note) : "—";
+            tr.innerHTML =
+                "<td>" + escapeHtml(fmtWhen(r.occurred_at)) + "</td>" +
+                "<td>" + escapeHtml(r.bill_code) + "</td>" +
+                "<td>" + escapeHtml(r.vendor_name) + "</td>" +
+                "<td>#" + r.product_num + " " + escapeHtml(r.item_name) + "</td>" +
+                "<td>" + escapeHtml(r.quantity_in) + "</td>" +
+                "<td>" + escapeHtml(r.unit_cp) + "</td>" +
+                "<td>" + escapeHtml(r.line_value) + "</td>" +
+                "<td>" + note + "</td>";
+            tb.appendChild(tr);
+        });
+        if (!rows.length) {
+            tb.innerHTML = '<tr><td colspan="8" class="inv-muted">' +
+                (stockInTxnCache.length ? "No rows match search." : "No stock-in transactions in this period.") +
+                "</td></tr>";
+        }
+    }
+
+    function renderStockInByItemFromCache() {
+        var tb1 = document.querySelector("#tblStockInByItem tbody");
+        if (!tb1) return;
+        var qv = (document.getElementById("stockInByItemFilter") && document.getElementById("stockInByItemFilter").value || "").trim().toLowerCase();
+        var rows = stockInByItemCache;
+        if (qv) {
+            rows = rows.filter(function (r) {
+                return String(r.product_num).indexOf(qv) !== -1 || (r.item_name || "").toLowerCase().indexOf(qv) !== -1;
+            });
+        }
+        tb1.innerHTML = "";
+        rows.forEach(function (r) {
+            var tr = document.createElement("tr");
+            tr.innerHTML =
+                "<td>" + r.product_num + "</td>" +
+                "<td>" + escapeHtml(r.item_name) + "</td>" +
+                "<td>" + escapeHtml(r.total_qty_received) + "</td>" +
+                "<td>" + r.receipt_lines + "</td>" +
+                "<td>" + escapeHtml(r.stock_on_hand_now) + "</td>" +
+                "<td>" + stockAlertBadgeHtml(r.alert) + "</td>";
+            tb1.appendChild(tr);
+        });
+        if (!rows.length) {
+            tb1.innerHTML = '<tr><td colspan="6" class="inv-muted">' +
+                (stockInByItemCache.length ? "No items match filter." : "No purchase receipts in this period.") +
+                "</td></tr>";
+        }
+    }
+
+    function loadStockIncoming() {
+        var days = document.getElementById("stockInDays").value;
+        var q = "stock-incoming/?limit=200";
+        if (days) q += "&days=" + encodeURIComponent(days);
+        api(q).then(function (d) {
+            stockInTxnCache = d.rows || [];
+            stockInByItemCache = d.by_item || [];
+            renderStockInTxnFromCache();
+            renderStockInByItemFromCache();
+        }).catch(function (e) { toast(String(e.message), "err"); });
+    }
+
+    function renderIuBatchTable() {
+        var tb = document.querySelector("#tblIuBatch tbody");
+        if (!tb) return;
+        tb.innerHTML = "";
+        if (!iuBatchLines.length) {
+            tb.innerHTML = '<tr><td colspan="5" class="inv-muted">No lines yet — search an item, set qty, then “Add to list”.</td></tr>';
+            return;
+        }
+        iuBatchLines.forEach(function (row) {
+            var tr = document.createElement("tr");
+            var rm = document.createElement("button");
+            rm.type = "button";
+            rm.className = "t-btn";
+            rm.textContent = "Remove";
+            rm.addEventListener("click", function () {
+                var u = row.uid;
+                iuBatchLines = iuBatchLines.filter(function (x) { return x.uid !== u; });
+                renderIuBatchTable();
+            });
+            var tdRm = document.createElement("td");
+            tdRm.appendChild(rm);
+            tr.innerHTML =
+                "<td>" + row.product_num + "</td>" +
+                "<td>" + escapeHtml(row.name) + "</td>" +
+                "<td>" + escapeHtml(row.quantity) + "</td>" +
+                "<td>" + escapeHtml(row.note || "—") + "</td>";
+            tr.appendChild(tdRm);
+            tb.appendChild(tr);
+        });
+    }
+
+    function printIngredientUseReceipt(bill) {
+        var w = window.open("", "_blank");
+        if (!w) {
+            toast("Allow pop-ups to print the receipt", "err");
+            return;
+        }
+        var rows = (bill.lines || []).map(function (ln) {
+            return "<tr><td>" + ln.product_num + "</td><td>" + escapeHtml(ln.item_name) + "</td><td>" + escapeHtml(ln.quantity) + "</td><td>" + escapeHtml(ln.line_note || "") + "</td></tr>";
+        }).join("");
+        var noteBlock = bill.notes ? "<p><strong>Bill note:</strong> " + escapeHtml(bill.notes) + "</p>" : "";
+        var html =
+            "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>" + escapeHtml(bill.bill_code) + "</title>" +
+            "<style>body{font-family:system-ui,Segoe UI,sans-serif;padding:20px;max-width:520px;margin:0 auto;font-size:14px;color:#111;}" +
+            "h1{font-size:18px;margin:0 0 8px;} .meta{color:#444;font-size:13px;margin:4px 0;} table{border-collapse:collapse;width:100%;margin-top:14px;}" +
+            "th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f0f0f0;font-size:12px;}</style></head><body>" +
+            "<h1>" + escapeHtml(RESTAURANT_NAME) + "</h1>" +
+            "<p class=\"meta\"><strong>Stock removal / giveaway</strong></p>" +
+            "<p class=\"meta\">Bill: " + escapeHtml(bill.bill_code) + "</p>" +
+            "<p class=\"meta\">" + escapeHtml(fmtWhen(bill.occurred_at)) + "</p>" +
+            "<p class=\"meta\">Reason: " + escapeHtml(bill.reason_label || bill.reason) + "</p>" +
+            noteBlock +
+            "<table><thead><tr><th>#</th><th>Item</th><th>Qty</th><th>Line note</th></tr></thead><tbody>" + rows + "</tbody></table>" +
+            "</body></html>";
+        w.document.write(html);
+        w.document.close();
+        w.focus();
+        setTimeout(function () { w.print(); }, 250);
+    }
+
+    function loadIngredientUses() {
+        api("ingredient-uses/?limit=100").then(function (d) {
+            var tb = document.querySelector("#tblIngredientUses tbody");
+            if (!tb) return;
+            tb.innerHTML = "";
+            var bills = d.bills || [];
+            bills.forEach(function (bill) {
+                var inner = (bill.lines || []).map(function (ln) {
+                    return "<tr><td>#" + ln.product_num + " " + escapeHtml(ln.item_name) + "</td><td>" + escapeHtml(ln.quantity) + "</td><td>" + escapeHtml(ln.line_note || "—") + "</td></tr>";
+                }).join("");
+                if (!inner) inner = "<tr><td colspan=\"3\" class=\"inv-muted\">No lines</td></tr>";
+                var tr = document.createElement("tr");
+                tr.className = "iu-bill-row";
+                var printBtn = document.createElement("button");
+                printBtn.type = "button";
+                printBtn.className = "t-btn";
+                printBtn.textContent = "Print";
+                printBtn.addEventListener("click", function () { printIngredientUseReceipt(bill); });
+                var tdPrint = document.createElement("td");
+                tdPrint.appendChild(printBtn);
+                tr.innerHTML =
+                    "<td>" + escapeHtml(fmtWhen(bill.occurred_at)) + "</td>" +
+                    "<td>" + escapeHtml(bill.bill_code) + "</td>" +
+                    "<td><table class=\"inv-iu-nested\"><thead><tr><th>Item</th><th>Qty</th><th>Line note</th></tr></thead><tbody>" + inner + "</tbody></table></td>" +
+                    "<td>" + escapeHtml(bill.reason_label || bill.reason) + "</td>" +
+                    "<td>" + escapeHtml(bill.notes || "—") + "</td>";
+                tr.appendChild(tdPrint);
+                tb.appendChild(tr);
+            });
+            if (!bills.length) {
+                tb.innerHTML = '<tr><td colspan="6" class="inv-muted">No bills yet.</td></tr>';
+            }
+        }).catch(function (e) { toast(String(e.message), "err"); });
+    }
+
+    function escapeHtml(s) {
+        var d = document.createElement("div");
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    function fmtWhen(iso) {
+        if (!iso) return "";
+        return String(iso).slice(0, 19).replace("T", " ");
+    }
+
+    function buildRestaurantMoneyFlowText(mf, ledgerClosing) {
+        if (!mf || typeof mf !== "object") {
+            return ledgerClosing != null ? "Ledger (− owe): " + ledgerClosing : "";
+        }
+        var pre = mf.supplier_prepaid_credit || "0.00";
+        var lines = [
+            "Purchase (goods total): " + (mf.total_purchase_net || "0.00"),
+            "Still owe suppliers (unpaid on bills): " + (mf.still_owe_suppliers || "0.00"),
+            "Supplier prepaid credit (you paid ahead / returns): " + pre,
+            "",
+            "Paid on receipt — cash: " + (mf.paid_on_receipt_cash || "0.00") + " · bank: " + (mf.paid_on_receipt_bank || "0.00") + " · eSewa: " + (mf.paid_on_receipt_esewa || "0.00"),
+            "Supplier payments (VP) — cash: " + (mf.vp_cash || "0.00") + " · bank: " + (mf.vp_bank || "0.00") + " · eSewa: " + (mf.vp_esewa || "0.00") + " (VP total " + (mf.vp_total || "0.00") + ")",
+            "Total money out (receipt + VP) — cash: " + (mf.total_paid_out_cash || "0.00") + " · bank: " + (mf.total_paid_out_bank || "0.00") + " · eSewa: " + (mf.total_paid_out_esewa || "0.00"),
+            "",
+            "Returns — goods credit (reduces what you owe): " + (mf.return_credit_goods_value || "0.00"),
+            "Refund received from supplier — cash: " + (mf.return_refund_received_cash || "0.00") + " · bank: " + (mf.return_refund_received_bank || "0.00") + " · eSewa: " + (mf.return_refund_received_esewa || "0.00"),
+            "",
+            "Your float after out − in — cash: " + (mf.net_cash_after_moves || "0.00") + " · bank: " + (mf.net_bank_after_moves || "0.00") + " · eSewa: " + (mf.net_esewa_after_moves || "0.00"),
+            "All channels combined: " + (mf.net_all_channels_after_moves || "0.00"),
+            "",
+            "Ledger running balance (− = you owe): " + (ledgerClosing != null ? ledgerClosing : "0.00")
+        ];
+        return lines.join("\n");
+    }
+
+    function renderVendorMoneyStrip(vm) {
+        var el = document.getElementById("vendorLedgerStrip");
+        if (!el) return;
+        if (!vm) {
+            el.style.display = "none";
+            el.innerHTML = "";
+            return;
+        }
+        var nm = escapeHtml(vm.vendor_name || "Vendor");
+        var h =
+            "<div style=\"line-height:1.55;\"><strong>" + nm + "</strong><br>" +
+            "Purchases (goods): " + escapeHtml(vm.total_purchase_net || "0.00") +
+            " · Still owe this vendor: " + escapeHtml(vm.still_owe_this_vendor || "0.00") +
+            " · Prepaid with them: " + escapeHtml(vm.prepaid_with_this_vendor || "0.00") + "<br>" +
+            "On receipt — cash " + escapeHtml(vm.paid_on_receipt_cash || "0.00") +
+            " · bank " + escapeHtml(vm.paid_on_receipt_bank || "0.00") +
+            " · eSewa " + escapeHtml(vm.paid_on_receipt_esewa || "0.00") +
+            " · Applied on bills: " + escapeHtml(vm.amount_applied_on_bills || "0.00") + "<br>" +
+            "VP — total " + escapeHtml(vm.vp_total || "0.00") +
+            " (cash " + escapeHtml(vm.vp_cash || "0.00") +
+            " · bank " + escapeHtml(vm.vp_bank || "0.00") +
+            " · eSewa " + escapeHtml(vm.vp_esewa || "0.00") + ")<br>" +
+            "Total paid out to this vendor — cash " + escapeHtml(vm.total_paid_out_cash || "0.00") +
+            " · bank " + escapeHtml(vm.total_paid_out_bank || "0.00") +
+            " · eSewa " + escapeHtml(vm.total_paid_out_esewa || "0.00") + "<br>" +
+            "Returns — credit " + escapeHtml(vm.return_credit_goods_value || "0.00") +
+            " · refund received cash " + escapeHtml(vm.return_refund_received_cash || "0.00") +
+            " · bank " + escapeHtml(vm.return_refund_received_bank || "0.00") +
+            " · eSewa " + escapeHtml(vm.return_refund_received_esewa || "0.00") +
+            "</div>";
+        el.innerHTML = h;
+        el.style.display = "block";
+    }
+
+    function loadMaster(showToast) {
+        return api("stock-summary/").then(function (d) {
+            var tb = document.querySelector("#tblMaster tbody");
+            tb.innerHTML = "";
+            (d.results || []).forEach(function (r) {
+                var tags = "";
+                if (r.is_sold_as_menu) tags += '<span class="inv-tag">Menu</span>';
+                if (r.is_used_as_ingredient) tags += '<span class="inv-tag">Ing</span>';
+                var phCell;
+                if (CAN_EDIT) {
+                    phCell =
+                        '<td data-label="Photo"><button type="button" class="inv-prod-ph" data-ph="' + r.id + '" title="Upload photo">' +
+                        (r.image_url
+                            ? '<img src="' + escapeHtml(r.image_url) + '" alt="" />'
+                            : '<span class="inv-ph-placeholder">+</span>') +
+                        "</button></td>";
+                } else {
+                    phCell = r.image_url
+                        ? '<td data-label="Photo"><img class="inv-prod-ph-img" src="' + escapeHtml(r.image_url) + '" alt="" /></td>'
+                        : '<td data-label="Photo">—</td>';
+                }
+                var siteCell;
+                if (CAN_EDIT && r.is_sold_as_menu) {
+                    siteCell =
+                        '<td data-label="Public site"><label style="font-weight:normal;display:flex;align-items:center;gap:6px;">' +
+                        '<input type="checkbox" class="inv-site-cb" data-id="' + r.id + '"' + (r.show_on_public_site ? " checked" : "") + " /> Show</label></td>";
+                } else if (r.is_sold_as_menu) {
+                    siteCell = "<td data-label=\"Public site\">" + (r.show_on_public_site ? "Yes" : "No") + "</td>";
+                } else {
+                    siteCell = '<td data-label="Public site">—</td>';
+                }
+                var pr = r.pricing || {};
+                var cpTi = escapeHtml(pr.cp_label || "Cost per unit");
+                var spCellEdit;
+                if (r.is_sold_as_menu) {
+                    var spTi = escapeHtml(pr.sp_label || "Selling price");
+                    spCellEdit =
+                        '<td data-label="SP"><input class="t-input inv-money-input" type="number" step="0.01" data-f="sp" data-id="' + r.id + '" value="' + r.sp + '" title="' + spTi + '" /></td>';
+                } else {
+                    spCellEdit = '<td data-label="SP" class="inv-muted" title="Ingredient-only — no retail SP">—</td>';
+                }
+                var tr = document.createElement("tr");
+                if (CAN_EDIT) {
+                    tr.innerHTML =
+                        phCell +
+                        '<td data-label="#">' + r.product_num + "</td>" +
+                        '<td data-label="Name">' + escapeHtml(r.name) + "</td>" +
+                        '<td data-label="Type">' + tags + escapeHtml(r.unit_type) + (r.sp_per_piece ? ' <span class="inv-tag">SP/pc</span>' : "") + "</td>" +
+                        siteCell +
+                        '<td data-label="On hand">' + escapeHtml(r.on_hand) + "</td>" +
+                        '<td data-label="CP"><input class="t-input inv-money-input" type="number" step="0.01" data-f="cp" data-id="' + r.id + '" value="' + r.cp + '" title="' + cpTi + '" /></td>' +
+                        spCellEdit +
+                        '<td data-label="Edit"><button type="button" class="t-btn" data-edit="' + r.id + '">Edit</button></td>' +
+                        '<td data-label="Prices"><button type="button" class="t-btn t-btn-primary" data-save="' + r.id + '">Save</button></td>';
+                } else {
+                    tr.innerHTML =
+                        phCell +
+                        '<td data-label="#">' + r.product_num + "</td>" +
+                        '<td data-label="Name">' + escapeHtml(r.name) + "</td>" +
+                        '<td data-label="Type">' + tags + escapeHtml(r.unit_type) + "</td>" +
+                        siteCell +
+                        '<td data-label="On hand">' + escapeHtml(r.on_hand) + "</td>" +
+                        '<td data-label="CP">' + escapeHtml(r.cp) + "</td>" +
+                        '<td data-label="SP">' + (r.is_sold_as_menu ? escapeHtml(r.sp) : "—") + "</td>";
+                }
+                tb.appendChild(tr);
+            });
+            tb.querySelectorAll(".inv-site-cb").forEach(function (cb) {
+                cb.addEventListener("change", function () {
+                    var id = cb.getAttribute("data-id");
+                    api("master-items/" + id + "/", {
+                        method: "PATCH",
+                        body: JSON.stringify({ show_on_public_site: cb.checked })
+                    })
+                        .then(function () { toast("Public menu visibility saved", "ok"); })
+                        .catch(function (e) { toast(String(e.message), "err"); cb.checked = !cb.checked; });
+                });
+            });
+            tb.querySelectorAll("[data-edit]").forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                    var id = parseInt(btn.getAttribute("data-edit"), 10);
+                    meEditingId = id;
+                    api("master-items/" + id + "/").then(function (it) {
+                        var p = document.getElementById("masterEditPanel");
+                        if (!p) return;
+                        document.getElementById("meTitle").textContent = "#" + it.product_num;
+                        document.getElementById("meName").value = it.name || "";
+                        document.getElementById("meUnit").value = it.unit_type || "piece";
+                        document.getElementById("mePack").value = it.pieces_per_pack || "";
+                        document.getElementById("meMenu").checked = !!it.is_sold_as_menu;
+                        document.getElementById("meIng").checked = !!it.is_used_as_ingredient;
+                        document.getElementById("meShowSite").checked = !!it.show_on_public_site;
+                        var msp = document.getElementById("meSpPerPiece");
+                        if (msp) msp.checked = !!it.sp_per_piece;
+                        syncMePricingUI();
+                        p.style.display = "block";
+                        p.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                    }).catch(function (e) { toast(String(e.message), "err"); });
+                });
+            });
+            tb.querySelectorAll("[data-save]").forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                    var id = btn.getAttribute("data-save");
+                    var row = btn.closest("tr");
+                    var cp = row.querySelector("[data-f=cp]").value;
+                    var spInp = row.querySelector("[data-f=sp]");
+                    var payload = { cp: cp };
+                    if (spInp) payload.sp = spInp.value;
+                    api("master-items/" + id + "/", { method: "PATCH", body: JSON.stringify(payload) })
+                        .then(function () { toast("Prices saved #" + id, "ok"); return loadMaster(false); })
+                        .catch(function (e) { toast(String(e.message), "err"); });
+                });
+            });
+            if (showToast) toast("List updated", "ok");
+        }).catch(function (e) { toast(String(e.message), "err"); });
+    }
+
+    document.getElementById("btnReloadMaster").addEventListener("click", function () { loadMaster(true); });
+
+    document.getElementById("tblMaster").addEventListener("click", function (e) {
+        var btn = e.target.closest(".inv-prod-ph");
+        if (!btn || !btn.getAttribute("data-ph")) return;
+        e.preventDefault();
+        var inp = document.getElementById("masterPhotoFile");
+        inp.setAttribute("data-target-id", btn.getAttribute("data-ph"));
+        inp.click();
+    });
+    document.getElementById("masterPhotoFile").addEventListener("change", function () {
+        var id = this.getAttribute("data-target-id");
+        var f = this.files[0];
+        if (!f || !id) { this.value = ""; this.removeAttribute("data-target-id"); return; }
+        var fd = new FormData();
+        fd.append("image", f);
+        fetch(API + "master-items/" + id + "/image/", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "X-CSRFToken": CSRF },
+            body: fd
+        }).then(function (r) {
+            return r.text().then(function (t) {
+                var j = null;
+                try { j = t ? JSON.parse(t) : null; } catch (e2) { j = { detail: t }; }
+                if (!r.ok) {
+                    var m = j && j.detail;
+                    if (typeof m !== "string") m = JSON.stringify(m || j);
+                    throw new Error(m || r.statusText);
+                }
+                return j;
+            });
+        }).then(function () {
+            toast("Photo saved", "ok");
+            return loadMaster(false);
+        }).catch(function (e) { toast(String(e.message), "err"); });
+        this.value = "";
+        this.removeAttribute("data-target-id");
+    });
+
+    function inferReceivePayModeFromBill(b) {
+        var pc = parseFloat(b.paid_cash) || 0;
+        var pb = parseFloat(b.paid_bank) || 0;
+        var pe = parseFloat(b.paid_esewa) || 0;
+        var n = (pc > 0 ? 1 : 0) + (pb > 0 ? 1 : 0) + (pe > 0 ? 1 : 0);
+        if (n > 1) return "split";
+        if (pb > 0) return "bank";
+        if (pe > 0) return "esewa";
+        return "cash";
+    }
+
+    function formatSplitSummary(b) {
+        if (!b) return "—";
+        var parts = [];
+        if (parseFloat(b.paid_cash) > 0) parts.push("Cash " + fmt2(b.paid_cash));
+        if (parseFloat(b.paid_bank) > 0) parts.push("Bank " + fmt2(b.paid_bank));
+        if (parseFloat(b.paid_esewa) > 0) parts.push("eSewa " + fmt2(b.paid_esewa));
+        return parts.length ? parts.join(" · ") : "—";
+    }
+
+    function syncReceivePayModeUI() {
+        var sel = document.getElementById("billPayMode");
+        if (!sel) return;
+        var split = sel.value === "split";
+        var sw = document.getElementById("billSplitWrap");
+        var paid = document.getElementById("billPaid");
+        var lbl = document.getElementById("billPaidLabel");
+        if (sw) sw.style.display = split ? "grid" : "none";
+        if (paid) paid.style.display = split ? "none" : "block";
+        if (lbl) lbl.textContent = split ? "Total (sum of split below)" : "Amount paid";
+    }
+
+    function buildReceivePaymentBody() {
+        var disc = document.getElementById("billDiscount").value || "0";
+        var mode = document.getElementById("billPayMode").value;
+        var body = { discount_amount: disc };
+        if (mode === "split") {
+            var pc = parseFloat(document.getElementById("billPaidCash").value) || 0;
+            var pb = parseFloat(document.getElementById("billPaidBank").value) || 0;
+            var pe = parseFloat(document.getElementById("billPaidEsewa").value) || 0;
+            body.paid_cash = fmt2(pc);
+            body.paid_bank = fmt2(pb);
+            body.paid_esewa = fmt2(pe);
+            body.amount_paid = fmt2(pc + pb + pe);
+        } else {
+            var amt = parseFloat(document.getElementById("billPaid").value) || 0;
+            body.amount_paid = fmt2(amt);
+            body.paid_cash = mode === "cash" ? fmt2(amt) : "0.00";
+            body.paid_bank = mode === "bank" ? fmt2(amt) : "0.00";
+            body.paid_esewa = mode === "esewa" ? fmt2(amt) : "0.00";
+        }
+        return body;
+    }
+
+    function syncRetPayModeUI() {
+        var sel = document.getElementById("retPayMode");
+        if (!sel) return;
+        var split = sel.value === "split";
+        var sw = document.getElementById("retSplitWrap");
+        var tot = document.getElementById("retRefundTotal");
+        var lbl = document.getElementById("retPaidLabel");
+        if (sw) sw.style.display = split ? "grid" : "none";
+        if (tot) tot.style.display = split ? "none" : "block";
+        if (lbl) lbl.textContent = split ? "Total (sum below)" : "Refund received";
+    }
+
+    function buildRetPaymentBody() {
+        var mode = document.getElementById("retPayMode").value;
+        var body = {};
+        if (mode === "split") {
+            var pc = parseFloat(document.getElementById("retPaidCash").value) || 0;
+            var pb = parseFloat(document.getElementById("retPaidBank").value) || 0;
+            var pe = parseFloat(document.getElementById("retPaidEsewa").value) || 0;
+            body.paid_cash = fmt2(pc);
+            body.paid_bank = fmt2(pb);
+            body.paid_esewa = fmt2(pe);
+            body.amount_paid = fmt2(pc + pb + pe);
+        } else {
+            var amt = parseFloat(document.getElementById("retRefundTotal").value) || 0;
+            body.amount_paid = fmt2(amt);
+            body.paid_cash = mode === "cash" ? fmt2(amt) : "0.00";
+            body.paid_bank = mode === "bank" ? fmt2(amt) : "0.00";
+            body.paid_esewa = mode === "esewa" ? fmt2(amt) : "0.00";
+        }
+        return body;
+    }
+
+    function scheduleRetPaySave() {
+        if (!returnBillId) return;
+        clearTimeout(retPaySaveTimer);
+        retPaySaveTimer = setTimeout(function () {
+            api("bills/" + returnBillId + "/", { method: "PATCH", body: JSON.stringify(buildRetPaymentBody()) })
+                .catch(function () {});
+        }, 600);
+    }
+
+    function loadVendors(cb) {
+        api("vendors/").then(function (rows) {
+            var sel = document.getElementById("billVendor");
+            var cur = sel.value;
+            sel.innerHTML = '<option value="">— No vendor —</option>';
+            var oa = document.createElement("option");
+            oa.value = "__adj__";
+            oa.textContent = "— Free stock-in (no supplier / AP) —";
+            sel.appendChild(oa);
+            (rows || []).forEach(function (v) {
+                var o = document.createElement("option");
+                o.value = v.id;
+                o.textContent = v.name;
+                sel.appendChild(o);
+            });
+            if (cur) sel.value = cur;
+            if (cb) cb();
+        }).catch(function (e) { toast(String(e.message), "err"); });
+    }
+
+    document.getElementById("btnAddVendor").addEventListener("click", function () {
+        var n = document.getElementById("newVendorName").value.trim();
+        if (!n) { toast("Vendor name required", "err"); return; }
+        api("vendors/", { method: "POST", body: JSON.stringify({ name: n }) })
+            .then(function (v) {
+                document.getElementById("newVendorName").value = "";
+                toast("Vendor added", "ok");
+                loadVendors(function () {
+                    document.getElementById("billVendor").value = String(v.id);
+                    onReceiveVendorChange();
+                });
+            }).catch(function (e) { toast(String(e.message), "err"); });
+    });
+
+    function setReceiveControlsState(posted, paid, noBill) {
+        var lockLines = posted || paid;
+        ["invSearch", "lnQty", "lnCp", "qaName", "qaCp", "qaSp", "qaPack"].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.disabled = lockLines;
+        });
+        document.getElementById("qaMenu").disabled = lockLines;
+        document.getElementById("qaIng").disabled = lockLines;
+        document.getElementById("qaUnit").disabled = lockLines;
+        document.getElementById("btnAddLine").disabled = lockLines;
+        document.getElementById("btnQuickAdd").disabled = lockLines;
+        var tqa = document.getElementById("btnToggleQuickAdd");
+        if (tqa) tqa.disabled = lockLines;
+        document.getElementById("newVendorName").disabled = lockLines;
+        document.getElementById("btnAddVendor").disabled = lockLines;
+        document.getElementById("billVendor").disabled = paid;
+        document.getElementById("billDiscount").disabled = paid || currentBillKind === "adjustment";
+        document.getElementById("billPaid").disabled = paid || currentBillKind === "adjustment";
+        var bpm = document.getElementById("billPayMode");
+        if (bpm) bpm.disabled = paid || currentBillKind === "adjustment";
+        ["billPaidCash", "billPaidBank", "billPaidEsewa"].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.disabled = paid || currentBillKind === "adjustment";
+        });
+        document.getElementById("btnPostBill").disabled = noBill || posted || paid;
+        document.getElementById("btnDelBill").disabled = noBill || posted || paid;
+    }
+
+    function applyBillToUI(b) {
+        if (!b) {
+            currentBillKind = null;
+            currentBillVendorId = null;
+            document.getElementById("billSummary").style.display = "none";
+            document.getElementById("billPayHint").style.display = "none";
+            var rw = document.getElementById("receiveMonetaryWrap");
+            if (rw) rw.style.display = "none";
+            document.getElementById("billHeader").textContent = "";
+            document.getElementById("billDiscount").value = "0";
+            document.getElementById("billPaid").value = "0";
+            var bpm0 = document.getElementById("billPayMode");
+            if (bpm0) bpm0.value = "cash";
+            ["billPaidCash", "billPaidBank", "billPaidEsewa"].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) el.value = "0";
+            });
+            syncReceivePayModeUI();
+            var sps = document.getElementById("sumPaidSplit");
+            if (sps) sps.textContent = "—";
+            document.getElementById("billVendor").value = "";
+            setReceiveControlsState(false, false, true);
+            document.getElementById("btnStartFresh").style.display = "none";
+            document.getElementById("invPostedBanner").classList.remove("show");
+            return;
+        }
+        currentBillKind = b.bill_kind;
+        currentBillVendorId = b.vendor != null ? String(b.vendor) : null;
+        var isAdj = b.bill_kind === "adjustment";
+        var rw = document.getElementById("receiveMonetaryWrap");
+        if (rw) rw.style.display = isAdj ? "none" : "block";
+        document.getElementById("billSummary").style.display = isAdj ? "none" : "grid";
+        document.getElementById("billPayHint").style.display = isAdj ? "none" : "block";
+        document.getElementById("sumSub").textContent = fmt2(b.subtotal);
+        document.getElementById("sumDisc").textContent = fmt2(b.discount_amount);
+        document.getElementById("sumNet").textContent = fmt2(b.net_payable);
+        document.getElementById("sumPaid").textContent = fmt2(b.amount_paid);
+        var sps = document.getElementById("sumPaidSplit");
+        if (sps) sps.textContent = formatSplitSummary(b);
+        document.getElementById("sumDue").textContent = fmt2(b.balance_due);
+        var kindLabel = b.bill_kind === "purchase_return" ? "return" : b.bill_kind;
+        document.getElementById("billHeader").textContent =
+            "Bill " + b.bill_code + " · " + kindLabel + " · " + b.status + (b.is_paid ? " · " + b.display_reference : "");
+        document.getElementById("billDiscount").value = fmt2(b.discount_amount);
+        document.getElementById("billPaidCash").value = fmt2(b.paid_cash);
+        document.getElementById("billPaidBank").value = fmt2(b.paid_bank);
+        document.getElementById("billPaidEsewa").value = fmt2(b.paid_esewa);
+        var bpm = document.getElementById("billPayMode");
+        if (bpm && !isAdj) {
+            bpm.value = inferReceivePayModeFromBill(b);
+            syncReceivePayModeUI();
+        }
+        document.getElementById("billPaid").value = fmt2(b.amount_paid);
+        if (isAdj) {
+            document.getElementById("billVendor").value = "__adj__";
+        } else if (b.vendor) {
+            document.getElementById("billVendor").value = String(b.vendor);
+        } else {
+            document.getElementById("billVendor").value = "";
+        }
+
+        var posted = b.status !== "draft";
+        var paid = b.status === "paid";
+        setReceiveControlsState(posted, paid, false);
+        document.getElementById("btnStartFresh").style.display = posted ? "inline-flex" : "none";
+        var ban = document.getElementById("invPostedBanner");
+        if (posted && !paid) {
+            ban.textContent = "Posted — stock updated. Pay or return from Vendor accounts. Use “Discard draft & clear” then pick supplier again for the next receipt.";
+            ban.classList.add("show");
+        } else if (paid) {
+            ban.textContent = "Settled — reference " + b.display_reference + ". Use “Discard draft & clear” then pick supplier for the next receipt.";
+            ban.classList.add("show");
+        } else {
+            ban.classList.remove("show");
+        }
+    }
+
+    function loadBill() {
+        if (!currentBillId) {
+            document.querySelector("#tblLines tbody").innerHTML = "";
+            applyBillToUI(null);
+            return Promise.resolve();
+        }
+        return api("bills/" + currentBillId + "/").then(function (b) {
+            applyBillToUI(b);
+            var tb = document.querySelector("#tblLines tbody");
+            tb.innerHTML = "";
+            (b.lines || []).forEach(function (ln) {
+                var tr = document.createElement("tr");
+                var q = fmt2(ln.quantity);
+                var uc = fmt2(ln.unit_cp);
+                var tot = fmt2(parseFloat(ln.quantity) * parseFloat(ln.unit_cp));
+                tr.innerHTML = "<td>#" + ln.master_product_num + " " + escapeHtml(ln.master_item_name) + "</td><td>" + q + "</td><td>" + uc + "</td><td>" + tot + "</td>";
+                if (b.status === "draft") {
+                    var td = document.createElement("td");
+                    var rm = document.createElement("button");
+                    rm.type = "button";
+                    rm.className = "t-btn";
+                    rm.textContent = "Remove";
+                    rm.addEventListener("click", function () {
+                        api("bills/" + currentBillId + "/lines/" + ln.id + "/", { method: "DELETE" })
+                            .then(loadBill).catch(function (e) { toast(String(e.message), "err"); });
+                    });
+                    td.appendChild(rm);
+                    tr.appendChild(td);
+                } else tr.innerHTML += "<td></td>";
+                tb.appendChild(tr);
+            });
+        }).catch(function (e) { toast(String(e.message), "err"); });
+    }
+
+    function saveBillMoney(quiet) {
+        if (!currentBillId) { return Promise.reject(new Error("No active bill")); }
+        if (currentBillKind === "adjustment") {
+            return Promise.resolve();
+        }
+        var vid = document.getElementById("billVendor").value;
+        var body = buildReceivePaymentBody();
+        if (vid && vid !== "__adj__") body.vendor_id = parseInt(vid, 10);
+        else body.vendor_id = null;
+        return api("bills/" + currentBillId + "/", { method: "PATCH", body: JSON.stringify(body) })
+            .then(function (b) {
+                applyBillToUI(b);
+                if (!quiet) toast("Saved", "ok");
+            });
+    }
+
+    function onReceiveVendorChange() {
+        var vid = document.getElementById("billVendor").value;
+        if (!vid) {
+            if (currentBillId) {
+                api("bills/" + currentBillId + "/", { method: "DELETE" })
+                    .catch(function () {})
+                    .finally(function () {
+                        currentBillId = null;
+                        loadBill();
+                    });
+            } else {
+                loadBill();
+            }
+            return;
+        }
+        var wantAdj = vid === "__adj__";
+        var vendorNum = wantAdj ? null : parseInt(vid, 10);
+        if (!wantAdj && isNaN(vendorNum)) {
+            toast("Invalid supplier", "err");
+            return;
+        }
+        var same = currentBillId && (
+            (wantAdj && currentBillKind === "adjustment") ||
+            (!wantAdj && currentBillKind === "purchase" && currentBillVendorId === String(vendorNum))
+        );
+        if (same) {
+            if (!wantAdj) schedulePaySave();
+            return;
+        }
+        var delP = currentBillId
+            ? api("bills/" + currentBillId + "/", { method: "DELETE" }).catch(function () {})
+            : Promise.resolve();
+        delP.finally(function () {
+            currentBillId = null;
+            var body = wantAdj ? { bill_kind: "adjustment" } : { bill_kind: "purchase", vendor_id: vendorNum };
+            api("bills/", { method: "POST", body: JSON.stringify(body) })
+                .then(function (b) {
+                    currentBillId = b.id;
+                    document.getElementById("billStatusMsg").textContent = wantAdj
+                        ? "Free stock-in — no supplier payable. Add lines, Post."
+                        : "Draft ready — add lines, set discount/paid under the summary, then Post.";
+                    return loadBill();
+                })
+                .catch(function (e) {
+                    toast(String(e.message), "err");
+                    document.getElementById("billVendor").value = "";
+                });
+        });
+    }
+
+    function schedulePaySave() {
+        if (!currentBillId || currentBillKind === "adjustment") return;
+        clearTimeout(paySaveTimer);
+        paySaveTimer = setTimeout(function () {
+            var v = document.getElementById("billVendor").value;
+            var payload = buildReceivePaymentBody();
+            payload.vendor_id = v && v !== "__adj__" ? parseInt(v, 10) : null;
+            api("bills/" + currentBillId + "/", {
+                method: "PATCH",
+                body: JSON.stringify(payload)
+            }).then(function (b) { applyBillToUI(b); }).catch(function () {});
+        }, 600);
+    }
+    document.getElementById("billDiscount").addEventListener("change", schedulePaySave);
+    document.getElementById("billPaid").addEventListener("change", schedulePaySave);
+    document.getElementById("billPaid").addEventListener("input", schedulePaySave);
+    document.getElementById("billPayMode").addEventListener("change", function () {
+        syncReceivePayModeUI();
+        schedulePaySave();
+    });
+    ["billPaidCash", "billPaidBank", "billPaidEsewa"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener("input", schedulePaySave);
+    });
+    document.getElementById("billVendor").addEventListener("change", onReceiveVendorChange);
+
+    document.getElementById("btnStartFresh").addEventListener("click", function () {
+        function clearUi() {
+            selectedItem = null;
+            document.getElementById("selItemLabel").textContent = "No item selected.";
+            document.getElementById("invSearch").value = "";
+            document.getElementById("billDiscount").value = "0";
+            document.getElementById("billPaid").value = "0";
+            var bpmC = document.getElementById("billPayMode");
+            if (bpmC) bpmC.value = "cash";
+            ["billPaidCash", "billPaidBank", "billPaidEsewa"].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) el.value = "0";
+            });
+            syncReceivePayModeUI();
+            document.getElementById("billVendor").value = "";
+            document.getElementById("invPostedBanner").classList.remove("show");
+            document.getElementById("billStatusMsg").textContent = "Choose a supplier or free stock-in to start.";
+        }
+        if (currentBillId) {
+            api("bills/" + currentBillId + "/", { method: "DELETE" })
+                .catch(function () {})
+                .finally(function () {
+                    currentBillId = null;
+                    clearUi();
+                    loadBill();
+                    toast("Draft discarded", "ok");
+                });
+        } else {
+            clearUi();
+            loadBill();
+            toast("Cleared", "ok");
+        }
+    });
+
+    document.getElementById("invSearch").addEventListener("input", function () {
+        var q = this.value.trim();
+        clearTimeout(searchTimer);
+        var box = document.getElementById("invSearchResults");
+        if (q.length < 1) { box.style.display = "none"; box.innerHTML = ""; return; }
+        searchTimer = setTimeout(function () {
+            api("master-items/?q=" + encodeURIComponent(q)).then(function (rows) {
+                box.innerHTML = "";
+                (rows || []).slice(0, 20).forEach(function (it) {
+                    var b = document.createElement("button");
+                    b.type = "button";
+                    b.textContent = "#" + it.product_num + " · " + it.name + " (qty " + it.stock_on_hand + ")";
+                    b.addEventListener("click", function () {
+                        selectedItem = it;
+                        document.getElementById("selItemLabel").textContent = "Selected: #" + it.product_num + " " + it.name;
+                        document.getElementById("lnCp").value = fmt2(it.cp);
+                        updateReceiveHints(it);
+                        box.style.display = "none";
+                    });
+                    box.appendChild(b);
+                });
+                box.style.display = (box.childNodes.length ? "block" : "none");
+            }).catch(function () { box.style.display = "none"; });
+        }, 300);
+    });
+
+    function setQuickAddOpen(open) {
+        var p = document.getElementById("qaPanel");
+        var b = document.getElementById("btnToggleQuickAdd");
+        if (!p || !b) return;
+        p.style.display = open ? "block" : "none";
+        b.textContent = open ? "Hide new item form" : "+ New item (not in list)";
+    }
+    document.getElementById("btnToggleQuickAdd").addEventListener("click", function () {
+        var p = document.getElementById("qaPanel");
+        if (!p) return;
+        setQuickAddOpen(p.style.display === "none");
+    });
+
+    document.getElementById("btnQuickAdd").addEventListener("click", function () {
+        var name = document.getElementById("qaName").value.trim();
+        if (!name) { toast("Name required", "err"); return; }
+        var body = {
+            name: name,
+            unit_type: document.getElementById("qaUnit").value,
+            cp: document.getElementById("qaCp").value || "0",
+            sp: document.getElementById("qaMenu").checked ? (document.getElementById("qaSp").value || "0") : "0",
+            is_sold_as_menu: document.getElementById("qaMenu").checked,
+            is_used_as_ingredient: document.getElementById("qaIng").checked,
+            show_on_public_site: document.getElementById("qaMenu").checked
+                ? document.getElementById("qaShowSite").checked
+                : false
+        };
+        var pk = document.getElementById("qaPack").value;
+        if (pk) body.pieces_per_pack = parseInt(pk, 10);
+        if (document.getElementById("qaUnit").value === "packed") {
+            body.sp_per_piece = !!(document.getElementById("qaSpPerPiece") && document.getElementById("qaSpPerPiece").checked);
+        }
+        api("master-items/quick/", { method: "POST", body: JSON.stringify(body) })
+            .then(function (it) {
+                selectedItem = it;
+                document.getElementById("selItemLabel").textContent = "Selected: #" + it.product_num + " " + it.name;
+                document.getElementById("lnCp").value = fmt2(it.cp);
+                updateReceiveHints(it);
+                setQuickAddOpen(false);
+                toast("Item created — still on this bill", "ok");
+            }).catch(function (e) { toast(String(e.message), "err"); });
+    });
+
+    document.getElementById("btnAddLine").addEventListener("click", function () {
+        if (!currentBillId) { toast("Choose a supplier or free stock-in first", "err"); return; }
+        if (!selectedItem) { toast("Search or quick-add an item", "err"); return; }
+        var qty = document.getElementById("lnQty").value;
+        var cp = document.getElementById("lnCp").value;
+        api("bills/" + currentBillId + "/lines/", {
+            method: "POST",
+            body: JSON.stringify({
+                master_item_id: selectedItem.id,
+                quantity: qty,
+                unit_cp: cp,
+                unit_sp: selectedItem.is_sold_as_menu ? selectedItem.sp : "0"
+            })
+        }).then(function () {
+            toast("Line added", "ok");
+            return loadBill();
+        }).catch(function (e) { toast(String(e.message), "err"); });
+    });
+
+    document.getElementById("btnPostBill").addEventListener("click", function () {
+        if (!currentBillId) return;
+        var pre = currentBillKind === "adjustment" ? Promise.resolve() : saveBillMoney(true);
+        pre.then(function () {
+            return api("bills/" + currentBillId + "/", { method: "PATCH", body: JSON.stringify({ status: "posted" }) });
+        }).then(function () {
+            toast("Posted — stock updated", "ok");
+            loadCashSummary();
+            loadStockIncoming();
+            loadMaster(false);
+            return loadBill();
+        }).catch(function (e) { toast(String(e.message), "err"); });
+    });
+
+    document.getElementById("btnDelBill").addEventListener("click", function () {
+        if (!currentBillId) return;
+        if (!confirm("Delete this draft bill?")) return;
+        api("bills/" + currentBillId + "/", { method: "DELETE" })
+            .then(function () {
+                currentBillId = null;
+                document.getElementById("billStatusMsg").textContent = "Draft deleted.";
+                loadBill();
+                toast("Deleted", "ok");
+            }).catch(function (e) { toast(String(e.message), "err"); });
+    });
+
+    function loadBills() {
+        api("supplier-ledger/").then(function (d) {
+            var rows = (d.results || []).slice().reverse();
+            var tb = document.querySelector("#tblBills tbody");
+            tb.innerHTML = "";
+            rows.forEach(function (r) {
+                var kind = r.kind === "vendor_payment" ? "payment (VP)" : r.kind;
+                var tr = document.createElement("tr");
+                tr.innerHTML =
+                    '<td data-label="When">' + escapeHtml(fmtWhen(r.occurred_at)) + "</td>" +
+                    '<td data-label="Type">' + escapeHtml(kind) + "</td>" +
+                    '<td data-label="Vendor">' + escapeHtml(r.vendor_name || "—") + "</td>" +
+                    '<td data-label="Reference">' + escapeHtml(r.reference) + "</td>" +
+                    '<td data-label="Debit">' + escapeHtml(r.debit) + "</td>" +
+                    '<td data-label="Credit">' + escapeHtml(r.credit) + "</td>" +
+                    '<td data-label="Balance">' + escapeHtml(r.balance) + "</td>" +
+                    '<td data-label="Detail">' + escapeHtml(r.note || "") + "</td>";
+                tb.appendChild(tr);
+            });
+            if (!rows.length) {
+                tb.innerHTML = '<tr><td colspan="8" class="inv-muted">No activity yet.</td></tr>';
+            }
+            var s = d.summary || {};
+            var elFlow = document.getElementById("billFeedSummary");
+            if (elFlow) {
+                elFlow.textContent = buildRestaurantMoneyFlowText(s.money_flow, s.ledger_closing_balance);
+            }
+        }).catch(function (e) {
+            var elF = document.getElementById("billFeedSummary");
+            if (elF) elF.textContent = "";
+            toast(String(e.message), "err");
+        });
+    }
+    document.getElementById("btnReloadBills").addEventListener("click", loadBills);
+
+    function loadRetBill() {
+        if (!returnBillId) {
+            document.getElementById("retBlock").style.display = "none";
+            document.getElementById("retBillLabel").style.display = "none";
+            document.getElementById("btnRetDiscard").style.display = "none";
+            document.querySelector("#tblRetLines tbody").innerHTML = "";
+            var rw0 = document.getElementById("retPayWrap");
+            if (rw0) rw0.style.display = "none";
+            return Promise.resolve();
+        }
+        return api("bills/" + returnBillId + "/").then(function (b) {
+            document.getElementById("retBillLabel").style.display = "block";
+            document.getElementById("retBillLabel").textContent = "Return draft " + b.bill_code + " · " + b.status;
+            var draft = b.status === "draft";
+            document.getElementById("retBlock").style.display = draft ? "block" : "none";
+            document.getElementById("btnRetDiscard").style.display = draft ? "inline-flex" : "none";
+            var tb = document.querySelector("#tblRetLines tbody");
+            tb.innerHTML = "";
+            (b.lines || []).forEach(function (ln) {
+                var tr = document.createElement("tr");
+                var q = fmt2(ln.quantity);
+                var uc = fmt2(ln.unit_cp);
+                var tot = fmt2(parseFloat(ln.quantity) * parseFloat(ln.unit_cp));
+                tr.innerHTML = "<td>#" + ln.master_product_num + " " + escapeHtml(ln.master_item_name) + "</td><td>" + q + "</td><td>" + uc + "</td><td>" + tot + "</td>";
+                if (draft) {
+                    var td = document.createElement("td");
+                    var rm = document.createElement("button");
+                    rm.type = "button";
+                    rm.className = "t-btn";
+                    rm.textContent = "Remove";
+                    rm.addEventListener("click", function () {
+                        api("bills/" + returnBillId + "/lines/" + ln.id + "/", { method: "DELETE" })
+                            .then(loadRetBill).catch(function (e) { toast(String(e.message), "err"); });
+                    });
+                    td.appendChild(rm);
+                    tr.appendChild(td);
+                } else tr.innerHTML += "<td></td>";
+                tb.appendChild(tr);
+            });
+            var rw = document.getElementById("retPayWrap");
+            if (rw) rw.style.display = draft ? "block" : "none";
+            if (draft) {
+                document.getElementById("retPaidCash").value = fmt2(b.paid_cash);
+                document.getElementById("retPaidBank").value = fmt2(b.paid_bank);
+                document.getElementById("retPaidEsewa").value = fmt2(b.paid_esewa);
+                document.getElementById("retRefundTotal").value = fmt2(b.amount_paid);
+                document.getElementById("retPayMode").value = inferReceivePayModeFromBill(b);
+                syncRetPayModeUI();
+                ["retPayMode", "retRefundTotal", "retPaidCash", "retPaidBank", "retPaidEsewa"].forEach(function (id) {
+                    var el = document.getElementById(id);
+                    if (el) el.disabled = false;
+                });
+            }
+        }).catch(function (e) { toast(String(e.message), "err"); });
+    }
+
+    document.getElementById("btnRetStart").addEventListener("click", function () {
+        var vid = document.getElementById("vpVendor").value;
+        if (!vid) { toast("Select a vendor first", "err"); return; }
+        if (returnBillId) { toast("Discard the current return draft first", "err"); return; }
+        api("bills/", { method: "POST", body: JSON.stringify({ bill_kind: "purchase_return", vendor_id: parseInt(vid, 10) }) })
+            .then(function (b) {
+                returnBillId = b.id;
+                retSelectedItem = null;
+                document.getElementById("retSelLabel").textContent = "No item selected.";
+                document.getElementById("retSearch").value = "";
+                document.getElementById("retBillFilter").value = "";
+                var rbx = document.getElementById("retSearchResults");
+                if (rbx) { rbx.style.display = "none"; rbx.innerHTML = ""; }
+                document.getElementById("retPayMode").value = "cash";
+                document.getElementById("retRefundTotal").value = "0";
+                document.getElementById("retPaidCash").value = "0";
+                document.getElementById("retPaidBank").value = "0";
+                document.getElementById("retPaidEsewa").value = "0";
+                syncRetPayModeUI();
+                return loadRetBill();
+            })
+            .then(function () { toast("Return draft — add lines, then Post return", "ok"); })
+            .catch(function (e) { toast(String(e.message), "err"); });
+    });
+
+    document.getElementById("btnRetDiscard").addEventListener("click", function () {
+        if (!returnBillId) return;
+        if (!confirm("Delete this return draft?")) return;
+        api("bills/" + returnBillId + "/", { method: "DELETE" })
+            .then(function () {
+                returnBillId = null;
+                loadRetBill();
+                toast("Return draft deleted", "ok");
+            })
+            .catch(function (e) { toast(String(e.message), "err"); });
+    });
+
+    function runReturnItemSearch() {
+        var q = document.getElementById("retSearch").value.trim();
+        var box = document.getElementById("retSearchResults");
+        if (q.length < 1) { box.style.display = "none"; box.innerHTML = ""; return; }
+        var qs = "return-item-search/?in_stock_only=1&q=" + encodeURIComponent(q);
+        var vid = document.getElementById("vpVendor").value;
+        if (vid) qs += "&vendor_id=" + encodeURIComponent(vid);
+        var bf = document.getElementById("retBillFilter").value.trim();
+        if (bf) qs += "&purchase_bill=" + encodeURIComponent(bf);
+        api(qs).then(function (rows) {
+            box.innerHTML = "";
+            (rows || []).slice(0, 20).forEach(function (it) {
+                var btn = document.createElement("button");
+                btn.type = "button";
+                btn.textContent = "#" + it.product_num + " · " + it.name + " (on hand " + it.stock_on_hand + ")";
+                btn.addEventListener("click", function () {
+                    retSelectedItem = it;
+                    document.getElementById("retSelLabel").textContent = "Selected: #" + it.product_num + " " + it.name;
+                    document.getElementById("retCp").value = fmt2(it.cp);
+                    box.style.display = "none";
+                });
+                box.appendChild(btn);
+            });
+            box.style.display = (box.childNodes.length ? "block" : "none");
+        }).catch(function (e) {
+            toast(String(e.message), "err");
+            box.style.display = "none";
+            box.innerHTML = "";
+        });
+    }
+
+    document.getElementById("retSearch").addEventListener("input", function () {
+        clearTimeout(retSearchTimer);
+        var box = document.getElementById("retSearchResults");
+        var q = this.value.trim();
+        if (q.length < 1) { box.style.display = "none"; box.innerHTML = ""; return; }
+        retSearchTimer = setTimeout(runReturnItemSearch, 300);
+    });
+
+    document.getElementById("retBillFilter").addEventListener("input", function () {
+        clearTimeout(retSearchTimer);
+        retSearchTimer = setTimeout(function () {
+            var q = document.getElementById("retSearch").value.trim();
+            if (q.length < 1) return;
+            runReturnItemSearch();
+        }, 400);
+    });
+
+    document.getElementById("btnRetAddLine").addEventListener("click", function () {
+        if (!returnBillId) { toast("Start return draft first", "err"); return; }
+        if (!retSelectedItem) { toast("Search and select an item", "err"); return; }
+        var qty = document.getElementById("retQty").value;
+        var cp = document.getElementById("retCp").value;
+        api("bills/" + returnBillId + "/lines/", {
+            method: "POST",
+            body: JSON.stringify({
+                master_item_id: retSelectedItem.id,
+                quantity: qty,
+                unit_cp: cp,
+                unit_sp: retSelectedItem.sp
+            })
+        }).then(function () {
+            toast("Line added", "ok");
+            return loadRetBill();
+        }).catch(function (e) { toast(String(e.message), "err"); });
+    });
+
+    document.getElementById("retPayMode").addEventListener("change", function () {
+        syncRetPayModeUI();
+        scheduleRetPaySave();
+    });
+    document.getElementById("retRefundTotal").addEventListener("input", scheduleRetPaySave);
+    ["retPaidCash", "retPaidBank", "retPaidEsewa"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener("input", scheduleRetPaySave);
+    });
+
+    document.getElementById("btnRetPost").addEventListener("click", function () {
+        if (!returnBillId) return;
+        api("bills/" + returnBillId + "/", { method: "PATCH", body: JSON.stringify(buildRetPaymentBody()) })
+            .then(function () {
+                return api("bills/" + returnBillId + "/", { method: "PATCH", body: JSON.stringify({ status: "posted" }) });
+            })
+            .then(function () {
+                toast("Return posted — refreshing…", "ok");
+                returnBillId = null;
+                loadCashSummary();
+                window.location.reload();
+            })
+            .catch(function (e) { toast(String(e.message), "err"); });
+    });
+
+    var btnMeSave = document.getElementById("btnMeSave");
+    if (btnMeSave) {
+        btnMeSave.addEventListener("click", function () {
+            if (!meEditingId) return;
+            var body = {
+                name: document.getElementById("meName").value.trim(),
+                unit_type: document.getElementById("meUnit").value,
+                is_sold_as_menu: document.getElementById("meMenu").checked,
+                is_used_as_ingredient: document.getElementById("meIng").checked,
+                show_on_public_site: document.getElementById("meMenu").checked && document.getElementById("meShowSite").checked
+            };
+            if (!body.name) { toast("Name required", "err"); return; }
+            var pk = document.getElementById("mePack").value.trim();
+            body.pieces_per_pack = pk ? parseInt(pk, 10) : null;
+            body.sp_per_piece = document.getElementById("meUnit").value === "packed" && document.getElementById("meSpPerPiece").checked;
+            api("master-items/" + meEditingId + "/", { method: "PATCH", body: JSON.stringify(body) })
+                .then(function () {
+                    toast("Item updated", "ok");
+                    document.getElementById("masterEditPanel").style.display = "none";
+                    meEditingId = null;
+                    return loadMaster(false);
+                })
+                .catch(function (e) { toast(String(e.message), "err"); });
+        });
+    }
+    var btnMeCancel = document.getElementById("btnMeCancel");
+    if (btnMeCancel) {
+        btnMeCancel.addEventListener("click", function () {
+            document.getElementById("masterEditPanel").style.display = "none";
+            meEditingId = null;
+        });
+    }
+
+    function loadVpVendorSelect(cb) {
+        api("vendors/").then(function (rows) {
+            var sel = document.getElementById("vpVendor");
+            var cur = sel.value;
+            sel.innerHTML = '<option value="">— Select vendor —</option>';
+            (rows || []).forEach(function (v) {
+                var o = document.createElement("option");
+                o.value = v.id;
+                o.textContent = v.name;
+                sel.appendChild(o);
+            });
+            if (cur) sel.value = cur;
+            if (cb) cb();
+        }).catch(function (e) { toast(String(e.message), "err"); });
+    }
+
+    function loadVendorPanel() {
+        api("vendor-balances/").then(function (d) {
+            var sel = document.getElementById("vpVendor");
+            var vid = sel.value;
+            var row = (d.results || []).find(function (x) { return String(x.id) === String(vid); });
+            document.getElementById("vpOpenBal").textContent = row ? row.open_balance : "—";
+        }).catch(function () { document.getElementById("vpOpenBal").textContent = "—"; });
+
+        var vid = document.getElementById("vpVendor").value;
+        var tb = document.querySelector("#tblOpenBills tbody");
+        var tbh = document.querySelector("#tblPayHistory tbody");
+        var tbl = document.querySelector("#tblLedger tbody");
+        tb.innerHTML = "";
+        tbh.innerHTML = "";
+        tbl.innerHTML = "";
+        if (!vid) {
+            renderVendorMoneyStrip(null);
+            document.getElementById("vpPayNote").textContent = "Select a vendor to load open bills and ledger.";
+            if (returnBillId) loadRetBill();
+            return;
+        }
+        document.getElementById("vpPayNote").textContent = "";
+
+        api("vendor-open-bills/?vendor_id=" + encodeURIComponent(vid)).then(function (rows) {
+            (rows || []).forEach(function (b) {
+                var due = parseFloat(b.balance_due);
+                var tr = document.createElement("tr");
+                tr.setAttribute("data-bill-id", b.id);
+                tr.setAttribute("data-due", String(due));
+                tr.innerHTML =
+                    "<td>" + escapeHtml(b.display_reference) + "</td>" +
+                    "<td>" + escapeHtml(fmt2(b.net_payable)) + "</td>" +
+                    "<td>" + escapeHtml(fmt2(b.amount_paid)) + "</td>" +
+                    "<td>" + escapeHtml(fmt2(b.balance_due)) + "</td>" +
+                    '<td><input type="number" step="0.01" class="t-input inv-money-input vp-alloc" style="max-width:110px;" value="0" /></td>';
+                tb.appendChild(tr);
+            });
+            if (!(rows || []).length) {
+                tb.innerHTML = '<tr><td colspan="5" class="inv-muted">No open balance on posted bills.</td></tr>';
+            }
+        }).catch(function (e) { toast(String(e.message), "err"); });
+
+        api("vendor-payments/?vendor_id=" + encodeURIComponent(vid)).then(function (rows) {
+            (rows || []).forEach(function (p) {
+                var tr = document.createElement("tr");
+                var refs = (p.allocations || []).map(function (a) { return a.bill_reference || a.bill_code; }).join(", ");
+                tr.innerHTML =
+                    "<td>" + escapeHtml(p.payment_code) + "</td>" +
+                    "<td>" + escapeHtml(p.total_amount) + "</td>" +
+                    "<td>" + escapeHtml(refs || "—") + "</td>" +
+                    "<td>" + escapeHtml((p.occurred_at || "").slice(0, 16)) + "</td>";
+                tbh.appendChild(tr);
+            });
+            if (!(rows || []).length) {
+                tbh.innerHTML = '<tr><td colspan="4" class="inv-muted">No payments yet.</td></tr>';
+            }
+        }).catch(function () {});
+
+        api("supplier-ledger/?vendor_id=" + encodeURIComponent(vid)).then(function (d) {
+            renderVendorMoneyStrip(d.summary && d.summary.vendor_money ? d.summary.vendor_money : null);
+            (d.results || []).forEach(function (r) {
+                var tr = document.createElement("tr");
+                tr.innerHTML =
+                    "<td>" + escapeHtml(fmtWhen(r.occurred_at)) + "</td>" +
+                    "<td>" + escapeHtml(r.kind) + "</td>" +
+                    "<td>" + escapeHtml(r.reference) + "</td>" +
+                    "<td>" + escapeHtml(r.debit) + "</td>" +
+                    "<td>" + escapeHtml(r.credit) + "</td>" +
+                    "<td>" + escapeHtml(r.balance) + "</td>" +
+                    "<td>" + escapeHtml(r.note || "") + "</td>";
+                tbl.appendChild(tr);
+            });
+            if (!(d.results || []).length) {
+                tbl.innerHTML = '<tr><td colspan="7" class="inv-muted">No rows.</td></tr>';
+            }
+        }).catch(function (e) { toast(String(e.message), "err"); });
+
+        if (returnBillId) loadRetBill();
+    }
+
+    document.getElementById("vpVendor").addEventListener("change", function () {
+        loadVendorPanel();
+        var rb = document.getElementById("retBlock");
+        var q = document.getElementById("retSearch").value.trim();
+        if (rb && rb.style.display !== "none" && q.length >= 1) {
+            runReturnItemSearch();
+        }
+    });
+    document.getElementById("btnVpRefresh").addEventListener("click", function () {
+        loadVpVendorSelect(loadVendorPanel);
+    });
+    document.getElementById("btnVpFifo").addEventListener("click", function () {
+        var total = parseFloat(document.getElementById("vpPayTotal").value) || 0;
+        var left = total;
+        document.querySelectorAll("#tblOpenBills tbody tr[data-bill-id]").forEach(function (tr) {
+            var due = parseFloat(tr.getAttribute("data-due")) || 0;
+            var inp = tr.querySelector(".vp-alloc");
+            if (!inp) return;
+            var apply = Math.min(Math.max(left, 0), due);
+            inp.value = fmt2(apply);
+            left -= apply;
+        });
+    });
+    document.getElementById("vpPayMode").addEventListener("change", function () {
+        var split = this.value === "split";
+        var sw = document.getElementById("vpSplitWrap");
+        if (sw) sw.style.display = split ? "grid" : "none";
+    });
+
+    document.getElementById("btnVpRecord").addEventListener("click", function () {
+        var vid = document.getElementById("vpVendor").value;
+        if (!vid) { toast("Select a vendor", "err"); return; }
+        var allocations = [];
+        var sum = 0;
+        document.querySelectorAll("#tblOpenBills tbody tr[data-bill-id]").forEach(function (tr) {
+            var inp = tr.querySelector(".vp-alloc");
+            if (!inp) return;
+            var a = parseFloat(inp.value) || 0;
+            if (a > 0) {
+                allocations.push({ bill_id: parseInt(tr.getAttribute("data-bill-id"), 10), amount: fmt2(a) });
+                sum += a;
+            }
+        });
+        if (!allocations.length) { toast("Enter pay amounts on at least one bill", "err"); return; }
+        var vm = document.getElementById("vpPayMode").value;
+        var payload = {
+            vendor_id: parseInt(vid, 10),
+            total_amount: fmt2(sum),
+            allocations: allocations,
+            notes: (document.getElementById("vpPayNotes") && document.getElementById("vpPayNotes").value) || ""
+        };
+        if (vm === "split") {
+            var vpc = parseFloat(document.getElementById("vpPaidCash").value) || 0;
+            var vpb = parseFloat(document.getElementById("vpPaidBank").value) || 0;
+            var vpe = parseFloat(document.getElementById("vpPaidEsewa").value) || 0;
+            if (Math.abs(vpc + vpb + vpe - sum) > 0.02) {
+                toast("Cash + bank + eSewa must equal payment total", "err");
+                return;
+            }
+            payload.paid_cash = fmt2(vpc);
+            payload.paid_bank = fmt2(vpb);
+            payload.paid_esewa = fmt2(vpe);
+        } else if (vm === "cash") {
+            payload.paid_cash = fmt2(sum);
+            payload.paid_bank = "0.00";
+            payload.paid_esewa = "0.00";
+        } else if (vm === "bank") {
+            payload.paid_cash = "0.00";
+            payload.paid_bank = fmt2(sum);
+            payload.paid_esewa = "0.00";
+        } else {
+            payload.paid_cash = "0.00";
+            payload.paid_bank = "0.00";
+            payload.paid_esewa = fmt2(sum);
+        }
+        api("vendor-payments/", {
+            method: "POST",
+            body: JSON.stringify(payload)
+        })
+            .then(function (p) {
+                toast("Recorded " + p.payment_code, "ok");
+                loadCashSummary();
+                loadVendorPanel();
+                loadVpVendorSelect();
+            })
+            .catch(function (e) { toast(String(e.message), "err"); });
+    });
+
+    document.getElementById("tblMaster").addEventListener("blur", function (e) {
+        var t = e.target;
+        if (t && t.matches && t.matches("input[type=number].inv-money-input")) clampInput2(t);
+    }, true);
+    ["billDiscount", "billPaid", "lnQty", "lnCp", "qaCp", "qaSp"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener("blur", function () { clampInput2(el); });
+    });
+
+    document.getElementById("btnReloadStockIn").addEventListener("click", loadStockIncoming);
+    document.getElementById("stockInDays").addEventListener("change", loadStockIncoming);
+    var sif = document.getElementById("stockInByItemFilter");
+    if (sif) sif.addEventListener("input", renderStockInByItemFromCache);
+    var stf = document.getElementById("stockInTxnFilter");
+    if (stf) stf.addEventListener("input", renderStockInTxnFromCache);
+
+    document.getElementById("iuSearch").addEventListener("input", function () {
+        var qv = this.value.trim();
+        clearTimeout(iuSearchTimer);
+        var box = document.getElementById("iuSearchResults");
+        if (!box) return;
+        if (qv.length < 1) { box.style.display = "none"; box.innerHTML = ""; return; }
+        iuSearchTimer = setTimeout(function () {
+            api("master-items/?q=" + encodeURIComponent(qv)).then(function (rows) {
+                box.innerHTML = "";
+                (rows || []).slice(0, 20).forEach(function (it) {
+                    var btn = document.createElement("button");
+                    btn.type = "button";
+                    var su = (it.pricing && it.pricing.stock_unit) || it.unit_type || "";
+                    btn.textContent = "#" + it.product_num + " · " + it.name + " · " + su + " · on hand " + it.stock_on_hand;
+                    btn.addEventListener("click", function () {
+                        iuSelectedItem = it;
+                        var ingHint = (it.pricing && it.pricing.ingredient_hint) ? " — " + it.pricing.ingredient_hint : "";
+                        document.getElementById("iuSelLabel").textContent = "Selected: #" + it.product_num + " " + it.name + " (enter qty in " + su + ")" + ingHint;
+                        box.style.display = "none";
+                    });
+                    box.appendChild(btn);
+                });
+                box.style.display = (box.childNodes.length ? "block" : "none");
+            }).catch(function () { box.style.display = "none"; });
+        }, 300);
+    });
+
+    document.getElementById("btnIuAddToList").addEventListener("click", function () {
+        if (!iuSelectedItem) { toast("Select an item first", "err"); return; }
+        var qty = document.getElementById("iuQty").value;
+        var ln = (document.getElementById("iuLineNote") && document.getElementById("iuLineNote").value || "").trim();
+        iuBatchLines.push({
+            uid: "iu" + Date.now() + "_" + Math.floor(Math.random() * 1e6),
+            master_item_id: iuSelectedItem.id,
+            product_num: iuSelectedItem.product_num,
+            name: iuSelectedItem.name,
+            quantity: qty,
+            note: ln
+        });
+        if (document.getElementById("iuLineNote")) document.getElementById("iuLineNote").value = "";
+        renderIuBatchTable();
+        toast("Line added to bill", "ok");
+    });
+
+    document.getElementById("btnIuClearList").addEventListener("click", function () {
+        if (!iuBatchLines.length) return;
+        if (!confirm("Clear all lines from this bill?")) return;
+        iuBatchLines = [];
+        renderIuBatchTable();
+    });
+
+    document.getElementById("btnIuSave").addEventListener("click", function () {
+        var reason = document.getElementById("iuReason").value;
+        var notes = document.getElementById("iuNotes").value || "";
+        var linesPayload;
+        if (iuBatchLines.length) {
+            linesPayload = iuBatchLines.map(function (r) {
+                return { master_item_id: r.master_item_id, quantity: r.quantity, note: r.note || "" };
+            });
+        } else if (iuSelectedItem) {
+            linesPayload = [{
+                master_item_id: iuSelectedItem.id,
+                quantity: document.getElementById("iuQty").value,
+                note: (document.getElementById("iuLineNote") && document.getElementById("iuLineNote").value || "").trim()
+            }];
+        } else {
+            toast("Add at least one line to the list, or select an item for a single line", "err");
+            return;
+        }
+        api("ingredient-uses/", {
+            method: "POST",
+            body: JSON.stringify({ lines: linesPayload, reason: reason, notes: notes })
+        }).then(function () {
+            toast("Bill posted — stock removed", "ok");
+            iuBatchLines = [];
+            renderIuBatchTable();
+            document.getElementById("iuNotes").value = "";
+            if (document.getElementById("iuLineNote")) document.getElementById("iuLineNote").value = "";
+            iuSelectedItem = null;
+            document.getElementById("iuSelLabel").textContent = "No item selected.";
+            loadIngredientUses();
+            loadStockIncoming();
+            loadMaster(false);
+        }).catch(function (e) { toast(String(e.message), "err"); });
+    });
+
+    syncReceivePayModeUI();
+    syncRetPayModeUI();
+
+    renderIuBatchTable();
+
+    ["qaUnit", "qaMenu"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener("change", syncQuickAddPricingUI);
+    });
+    ["meUnit", "meMenu"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener("change", syncMePricingUI);
+    });
+    ["lnQty", "lnCp"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener("input", updateLinePreview);
+    });
+
+    loadMeta();
+    loadVendors();
+    loadVpVendorSelect();
+    loadMaster(false);
+    loadCashSummary();
+    loadStockIncoming();
+    loadBill();
+})();
+</script>
+{% endblock %}

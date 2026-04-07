@@ -1,0 +1,88 @@
+{% extends "superadmin/base.html" %}
+{% block title %}{{ restaurant.name }}{% endblock %}
+{% block heading %}{{ restaurant.name }}{% endblock %}
+{% block content %}
+<p class="muted">
+    Slug: <code>{{ restaurant.slug }}</code>
+    · {% if restaurant.is_active %}<span class="badge ok">Active</span>{% else %}<span class="badge off">Inactive</span>{% endif %}
+</p>
+<p>
+    <a class="btn btn-primary" href="{% url 'superadmin:restaurant_edit' restaurant.slug %}">Edit restaurant</a>
+    <a class="btn" href="{% url 'superadmin:fiscal_year_create' restaurant.slug %}">New fiscal year</a>
+    <a class="btn" href="{% url 'superadmin:staff_create' restaurant.slug %}">Add user</a>
+</p>
+
+<div class="card">
+    <h3 style="margin-top:0;font-size:1rem;">Current fiscal year (by today’s date)</h3>
+    {% if current_fiscal_year %}
+    <p><strong>{{ current_fiscal_year.label }}</strong> — {{ current_fiscal_year.start_date }} → {{ current_fiscal_year.end_date }}</p>
+    {% else %}
+    <p class="muted">No active fiscal year covers today. Add one below.</p>
+    {% endif %}
+</div>
+
+<div class="card" style="padding:0;overflow:hidden;">
+    <h3 style="padding:1rem 1.25rem;margin:0;border-bottom:1px solid var(--border);font-size:1rem;">Fiscal years</h3>
+    <div class="table-scroll">
+    <table>
+        <thead>
+            <tr>
+                <th>Label</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fy in fiscal_years %}
+            <tr>
+                <td>{{ fy.label }}</td>
+                <td>{{ fy.start_date }}</td>
+                <td>{{ fy.end_date }}</td>
+                <td>{% if fy.is_active %}<span class="badge ok">Active</span>{% else %}<span class="badge off">Off</span>{% endif %}</td>
+                <td><a href="{% url 'superadmin:fiscal_year_edit' restaurant.slug fy.pk %}">Edit</a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="muted" style="padding:1rem 1.25rem;">No fiscal years. Defaults to Jan 1–Dec 31 of the current calendar year when you create one.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<div class="card" style="padding:0;overflow:hidden;">
+    <h3 style="padding:1rem 1.25rem;margin:0;border-bottom:1px solid var(--border);font-size:1rem;">Restaurant users</h3>
+    <div class="table-scroll">
+    <table>
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in staff_members %}
+            <tr>
+                <td>{{ s.user.username }}</td>
+                <td>{{ s.get_role_display }}</td>
+                <td>{% if s.is_active %}<span class="badge ok">Active</span>{% else %}<span class="badge off">Inactive</span>{% endif %}</td>
+                <td>
+                    <form method="post" action="{% url 'superadmin:staff_toggle_active' restaurant.slug s.pk %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger" style="font-size:0.8rem;padding:0.25rem 0.5rem;">
+                            {% if s.is_active %}Deactivate{% else %}Activate{% endif %}
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="muted" style="padding:1rem 1.25rem;">No users linked to this restaurant.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

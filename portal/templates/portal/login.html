@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Outlet sign-in · Pakoda</title>
+    <style>
+        :root {
+            --t-bg: #e8e6e3;
+            --t-border: #8b8b8b;
+            --t-title: #1a5276;
+            --t-title-grad-b: #0d3d5c;
+            --t-text: #1a1a1a;
+            --t-primary: #1a5276;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Tahoma, "Segoe UI", sans-serif;
+            font-size: 14px;
+            background: var(--t-bg);
+            color: var(--t-text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .t-window {
+            width: 100%;
+            max-width: 400px;
+            background: #fff;
+            border: 1px solid var(--t-border);
+            box-shadow: 2px 2px 8px rgba(0,0,0,.12);
+        }
+        .t-window-head {
+            background: linear-gradient(180deg, var(--t-title) 0%, var(--t-title-grad-b) 100%);
+            color: #fff;
+            padding: 10px 14px;
+            font-weight: 700;
+            font-size: 14px;
+            border-bottom: 1px solid #000;
+        }
+        .t-window-body { padding: 18px 16px 20px; }
+        .t-muted { color: #555; font-size: 12px; margin: 0 0 14px; line-height: 1.4; }
+        label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+        .t-field { margin-bottom: 14px; }
+        .t-input {
+            width: 100%;
+            padding: 10px 12px;
+            font-size: 16px;
+            border: 1px solid var(--t-border);
+            border-radius: 2px;
+        }
+        .t-input:focus { outline: 2px solid var(--t-primary); }
+        .t-btn {
+            width: 100%;
+            min-height: 44px;
+            margin-top: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            background: linear-gradient(180deg, #2e6d95 0%, var(--t-primary) 100%);
+            color: #fff;
+            border: 1px solid #0d3d5c;
+            border-radius: 2px;
+            cursor: pointer;
+        }
+        .t-btn:active { filter: brightness(0.95); }
+        .t-link { text-align: center; margin-top: 16px; font-size: 12px; }
+        .t-link a { color: var(--t-primary); }
+        .t-err { list-style: none; padding: 0; margin: 0 0 12px; }
+        .t-err li { background: #fdeaea; border: 1px solid #c99; padding: 8px 10px; font-size: 12px; }
+        .errorlist { color: #a52a2a; font-size: 12px; margin: 4px 0 0; padding-left: 1rem; }
+    </style>
+</head>
+<body>
+<div class="t-window">
+    <div class="t-window-head">Outlet administrator login</div>
+    <div class="t-window-body">
+        <p class="t-muted">Sign in with the username and password created for your restaurant. Platform superusers use the Superadmin entry instead.</p>
+        {% if messages %}
+        <ul class="t-err">
+            {% for message in messages %}
+            <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        <form method="post" action="">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+            <ul class="t-err">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+            {% endif %}
+            <div class="t-field">
+                <label for="id_username">{{ form.username.label }}</label>
+                {{ form.username }}
+                {{ form.username.errors }}
+            </div>
+            <div class="t-field">
+                <label for="id_password">{{ form.password.label }}</label>
+                {{ form.password }}
+                {{ form.password.errors }}
+            </div>
+            <button type="submit" class="t-btn">Sign in</button>
+        </form>
+        <p class="t-link"><a href="{% url 'superadmin:login' %}">Platform superadmin sign-in</a> · <a href="{% url 'web:home' %}">Public site</a></p>
+    </div>
+</div>
+</body>
+</html>

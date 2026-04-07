@@ -1,0 +1,37 @@
+{% extends "superadmin/base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block body %}
+<div class="login-wrap">
+    <div class="login-card">
+        <h2 style="margin-top:0;">Superadmin</h2>
+        <p class="muted">Platform superuser sign-in only.</p>
+        {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        <form method="post" action="">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+            <ul class="messages">
+                {% for e in form.non_field_errors %}<li class="error">{{ e }}</li>{% endfor %}
+            </ul>
+            {% endif %}
+            <div class="form-group">
+                <label for="id_username">{{ form.username.label }}</label>
+                {{ form.username }}
+                {{ form.username.errors }}
+            </div>
+            <div class="form-group">
+                <label for="id_password">{{ form.password.label }}</label>
+                {{ form.password }}
+                {{ form.password.errors }}
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;margin-top:0.5rem;">Sign in</button>
+        </form>
+        <p class="muted" style="margin-top:1.5rem;font-size:0.8rem;">Restaurant admins and staff sign in at <a href="{% url 'portal:login' %}">/portal/login/</a>.</p>
+    </div>
+</div>
+{% endblock %}

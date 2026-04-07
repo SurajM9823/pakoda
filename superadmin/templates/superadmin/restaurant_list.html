@@ -1,0 +1,32 @@
+{% extends "superadmin/base.html" %}
+{% block title %}Restaurants{% endblock %}
+{% block heading %}Restaurants{% endblock %}
+{% block content %}
+<p style="margin-top:0;"><a class="btn btn-primary" href="{% url 'superadmin:restaurant_create' %}">New restaurant</a></p>
+<div class="card" style="padding:0;overflow:hidden;">
+    <div class="table-scroll">
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Slug</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in restaurants %}
+            <tr>
+                <td><strong>{{ r.name }}</strong></td>
+                <td class="muted">{{ r.slug }}</td>
+                <td>{% if r.is_active %}<span class="badge ok">Active</span>{% else %}<span class="badge off">Inactive</span>{% endif %}</td>
+                <td><a href="{% url 'superadmin:restaurant_detail' r.slug %}">Open</a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="muted">No restaurants yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

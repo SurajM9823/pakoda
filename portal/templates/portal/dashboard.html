@@ -1,0 +1,90 @@
+{% extends "portal/base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block app_title %}Gateway of Pakoda{% endblock %}
+{% block titlebar_sub %}
+<span class="t-sub">{{ restaurant.name }} · {{ staff.get_role_display }}</span>
+{% endblock %}
+{% block titlebar_actions %}
+<form method="post" action="{% url 'portal:logout' %}" style="margin:0;">
+    {% csrf_token %}
+    <button type="submit" class="t-btn-ghost">Sign out</button>
+</form>
+{% endblock %}
+
+{% block nav_drawer %}
+<a href="{% url 'portal:dashboard' %}" class="active">Dashboard</a>
+<a href="{% url 'portal:inventory' %}">Inventory</a>
+<a href="{% url 'portal:menu' %}">Menu</a>
+{% if can_edit_restaurant %}
+<a href="{% url 'portal:restaurant_edit' %}">Outlet details</a>
+{% endif %}
+<a href="{% url 'web:home' %}">Public website</a>
+{% endblock %}
+
+{% block content %}
+<div class="t-panel-box">
+    <div class="t-panel-head">Company information</div>
+    <div class="t-panel-body">
+        <dl class="t-kv">
+            <dt>Outlet name</dt>
+            <dd><strong>{{ restaurant.name }}</strong></dd>
+            <dt>Code</dt>
+            <dd>{{ restaurant.slug }}</dd>
+            <dt>Phone</dt>
+            <dd>{{ restaurant.phone|default:"—" }}</dd>
+            <dt>Address</dt>
+            <dd>{{ restaurant.address|default:"—"|linebreaksbr }}</dd>
+        </dl>
+        {% if can_edit_restaurant %}
+        <div class="t-actions">
+            <a class="t-btn t-btn-primary" href="{% url 'portal:restaurant_edit' %}">Alter outlet details</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="t-panel-box">
+    <div class="t-panel-head">Financial year (physical / fiscal period)</div>
+    <div class="t-panel-body">
+        {% if current_fiscal_year %}
+        <p style="margin:0 0 8px;"><strong>Current period:</strong> {{ current_fiscal_year.label }}
+            ({{ current_fiscal_year.start_date|date:"d M Y" }} — {{ current_fiscal_year.end_date|date:"d M Y" }})</p>
+        {% else %}
+        <p style="margin:0;color:#555;">No active period covers today’s date. Ask your platform admin to add a financial year.</p>
+        {% endif %}
+        <div class="t-table-wrap" style="margin-top:12px;">
+            <table class="t-table">
+                <thead>
+                    <tr>
+                        <th>Period name</th>
+                        <th>From</th>
+                        <th>To</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fy in fiscal_years %}
+                    <tr>
+                        <td>{{ fy.label }}</td>
+                        <td>{{ fy.start_date|date:"d-m-Y" }}</td>
+                        <td>{{ fy.end_date|date:"d-m-Y" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" style="color:#555;">No periods listed.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="t-panel-box">
+    <div class="t-panel-head">Shortcuts</div>
+    <div class="t-panel-body">
+        <div class="t-actions">
+            <a class="t-btn t-btn-primary" href="{% url 'portal:inventory' %}">Inventory & stock</a>
+            <a class="t-btn t-btn-primary" href="{% url 'portal:menu' %}">Menu management</a>
+            <a class="t-btn" href="{% url 'web:home' %}">View public menu site</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

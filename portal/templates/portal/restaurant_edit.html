@@ -1,0 +1,43 @@
+{% extends "portal/base.html" %}
+{% block title %}Outlet details{% endblock %}
+{% block app_title %}Alter outlet{% endblock %}
+{% block titlebar_sub %}
+<span class="t-sub">{{ restaurant.name }}</span>
+{% endblock %}
+{% block titlebar_actions %}
+<form method="post" action="{% url 'portal:logout' %}" style="margin:0;">
+    {% csrf_token %}
+    <button type="submit" class="t-btn-ghost">Sign out</button>
+</form>
+{% endblock %}
+
+{% block nav_drawer %}
+<a href="{% url 'portal:dashboard' %}">Dashboard</a>
+<a href="{% url 'portal:inventory' %}">Inventory</a>
+<a href="{% url 'portal:menu' %}">Menu</a>
+<a href="{% url 'portal:restaurant_edit' %}" class="active">Outlet details</a>
+<a href="{% url 'web:home' %}">Public website</a>
+{% endblock %}
+
+{% block content %}
+<p style="margin:0 0 12px;color:#555;font-size:12px;">Change name, phone, or address. Outlet code (<strong>{{ restaurant.slug }}</strong>) is fixed; contact platform admin to change it.</p>
+<div class="t-panel-box">
+    <div class="t-panel-head">Master — outlet</div>
+    <div class="t-panel-body">
+        <form method="post">
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="t-field" style="margin-bottom:14px;">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+            {% endfor %}
+            <div class="t-actions" style="margin-top:16px;">
+                <button type="submit" class="t-btn t-btn-primary">Accept</button>
+                <a class="t-btn" href="{% url 'portal:dashboard' %}">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

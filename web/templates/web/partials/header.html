@@ -1,0 +1,20 @@
+<div class="container-fluid p-0 nav-bar">
+    <nav class="navbar navbar-expand-lg bg-none navbar-dark py-3">
+        <a href="{% url 'web:home' %}" class="navbar-brand px-lg-4 m-0">
+            <h1 class="m-0 text-uppercase text-white brand-logo">PAKODA BY KILO</h1>
+        </a>
+        <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbarCollapse">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-between" id="navbarCollapse">
+            <div class="navbar-nav ml-auto p-4">
+                <a href="{% url 'web:home' %}" class="nav-item nav-link" data-nav="index">Home</a>
+                <a href="{% url 'web:about' %}" class="nav-item nav-link" data-nav="about">About</a>
+                <a href="{% url 'web:service' %}" class="nav-item nav-link" data-nav="service">Service</a>
+                <a href="{% url 'web:menu' %}" class="nav-item nav-link" data-nav="menu">Menu</a>
+                <a href="{% url 'web:menu' %}" class="nav-item nav-link" data-nav="combo">Combo pack</a>
+                <a href="{% url 'web:contact' %}" class="nav-item nav-link" data-nav="contact">Contact</a>
+            </div>
+        </div>
+    </nav>
+</div>

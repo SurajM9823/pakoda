@@ -1,0 +1,54 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>{% block title %}Pakoda By Kilo{% endblock %}</title>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta content="Free Website Template" name="keywords">
+    <meta content="Free Website Template" name="description">
+
+    <link href="{% static 'web/img/favicon.ico' %}" rel="icon">
+
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;400&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
+
+    <link href="{% static 'web/lib/owlcarousel/assets/owl.carousel.min.css' %}" rel="stylesheet">
+    <link href="{% static 'web/lib/tempusdominus/css/tempusdominus-bootstrap-4.min.css' %}" rel="stylesheet" />
+
+    <link href="{% static 'web/css/style.min.css' %}" rel="stylesheet">
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body data-page="{{ nav_page }}">
+    {% include "web/partials/header.html" %}
+
+    {% block content %}{% endblock %}
+
+    {% include "web/partials/footer.html" %}
+
+    <a href="#" class="btn btn-lg btn-primary btn-lg-square back-to-top"><i class="fa fa-angle-double-up"></i></a>
+
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'web/lib/easing/easing.min.js' %}"></script>
+    <script src="{% static 'web/lib/waypoints/waypoints.min.js' %}"></script>
+    <script src="{% static 'web/lib/owlcarousel/owl.carousel.min.js' %}"></script>
+    <script src="{% static 'web/lib/tempusdominus/js/moment.min.js' %}"></script>
+    <script src="{% static 'web/lib/tempusdominus/js/moment-timezone.min.js' %}"></script>
+    <script src="{% static 'web/lib/tempusdominus/js/tempusdominus-bootstrap-4.min.js' %}"></script>
+
+    <script src="{% static 'web/mail/jqBootstrapValidation.min.js' %}"></script>
+    <script src="{% static 'web/mail/contact.js' %}"></script>
+
+    <script src="{% static 'web/js/config.js' %}"></script>
+    <script src="{% static 'web/js/layout.js' %}"></script>
+
+    <script src="{% static 'web/js/main.js' %}"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+
+</html>

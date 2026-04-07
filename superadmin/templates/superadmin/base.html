@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>{% block title %}Superadmin{% endblock %} · Pakoda</title>
+    <style>
+        :root {
+            --bg: #0f1419;
+            --panel: #1a2332;
+            --border: #2d3a4f;
+            --text: #e7ecf3;
+            --muted: #8b9cb3;
+            --accent: #c9a227;
+            --accent-dim: #8a7020;
+            --danger: #c94c4c;
+            --ok: #3d9a6b;
+        }
+        * { box-sizing: border-box; }
+        html { -webkit-text-size-adjust: 100%; }
+        body {
+            margin: 0;
+            font-family: "Segoe UI", system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        .sa-drawer {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 300;
+            pointer-events: none;
+        }
+        .sa-drawer.open { display: block; pointer-events: auto; }
+        .sa-drawer-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,.5);
+            opacity: 0;
+            transition: opacity .2s;
+        }
+        .sa-drawer.open .sa-drawer-backdrop { opacity: 1; }
+        .sa-drawer-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: min(280px, 88vw);
+            background: var(--panel);
+            border-right: 1px solid var(--border);
+            transform: translateX(-100%);
+            transition: transform .2s ease;
+            padding: 1rem 0;
+            overflow-y: auto;
+        }
+        .sa-drawer.open .sa-drawer-panel { transform: translateX(0); }
+
+        .layout { display: flex; min-height: 100vh; }
+        .sidebar {
+            width: 240px;
+            background: var(--panel);
+            border-right: 1px solid var(--border);
+            padding: 1.25rem 0;
+            flex-shrink: 0;
+        }
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+        }
+        .sidebar h1 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+            padding: 0 1.25rem;
+            margin: 0 0 1rem;
+        }
+        .nav a {
+            display: block;
+            padding: 0.75rem 1.25rem;
+            min-height: 44px;
+            color: var(--text);
+            border-left: 3px solid transparent;
+            display: flex;
+            align-items: center;
+        }
+        .nav a:hover { background: rgba(255,255,255,.04); text-decoration: none; }
+        .nav a.active { border-left-color: var(--accent); color: var(--accent); }
+
+        .main { flex: 1; padding: 1rem 1rem 2rem; max-width: 1100px; min-width: 0; }
+        @media (min-width: 600px) {
+            .main { padding: 1.5rem 2rem; }
+        }
+
+        .sa-menu-btn {
+            display: none;
+            min-width: 44px;
+            min-height: 44px;
+            align-items: center;
+            justify-content: center;
+            margin-right: 0.75rem;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 6px;
+            font-size: 1.25rem;
+            cursor: pointer;
+        }
+        @media (max-width: 768px) {
+            .sa-menu-btn { display: inline-flex; }
+        }
+
+        .topbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .topbar h2 { margin: 0; font-size: clamp(1.1rem, 4vw, 1.35rem); font-weight: 600; flex: 1; min-width: 0; }
+        .filter-form {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+        }
+        @media (min-width: 900px) {
+            .filter-form { width: auto; margin-left: auto; }
+        }
+        .filter-form select {
+            min-width: 0;
+            flex: 1;
+            max-width: 100%;
+            min-height: 44px;
+            padding: 0.35rem 0.5rem;
+            background: var(--panel);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+        @media (min-width: 900px) {
+            .filter-form select { min-width: 200px; flex: none; }
+        }
+        .topbar-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+        }
+        @media (min-width: 900px) {
+            .topbar-actions { width: auto; margin-left: auto; }
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
+            padding: 0.45rem 0.9rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: var(--text);
+            cursor: pointer;
+        }
+        .btn:hover { border-color: var(--accent-dim); }
+        .btn-primary {
+            background: linear-gradient(180deg, #d4af37, var(--accent-dim));
+            border-color: var(--accent-dim);
+            color: #1a1508;
+        }
+        .btn-primary:hover { filter: brightness(1.05); text-decoration: none; }
+        .btn-danger { border-color: var(--danger); color: #f5b4b4; min-height: 36px; font-size: 0.8rem; }
+
+        .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -0.25rem; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.92rem;
+            min-width: 520px;
+        }
+        th, td {
+            text-align: left;
+            padding: 0.65rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+        th { color: var(--muted); font-weight: 500; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.25rem;
+        }
+        .muted { color: var(--muted); font-size: 0.9rem; }
+        .messages { list-style: none; padding: 0; margin: 0 0 1rem; }
+        .messages li {
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            margin-bottom: 0.35rem;
+        }
+        .messages .success { background: rgba(61, 154, 107, 0.2); color: #8fd4ae; }
+        .messages .error { background: rgba(201, 76, 76, 0.2); color: #f5a8a8; }
+        .messages .info { background: rgba(201, 162, 39, 0.15); color: #e8d48b; }
+        label { display: block; margin-bottom: 0.25rem; font-size: 0.85rem; color: var(--muted); }
+        .form-group { margin-bottom: 1rem; }
+        .form-group input, .form-group textarea, .form-group select {
+            min-height: 44px;
+            width: 100%;
+            max-width: 100%;
+            padding: 0.5rem 0.65rem;
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+        .form-check-input { margin-right: 0.35rem; min-height: auto; width: auto; }
+        .login-wrap {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .login-card {
+            width: 100%;
+            max-width: 380px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+        .badge { font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px; background: var(--border); color: var(--muted); }
+        .badge.ok { background: rgba(61, 154, 107, 0.25); color: #8fd4ae; }
+        .badge.off { background: rgba(201, 76, 76, 0.2); color: #f5a8a8; }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+{% block body %}
+<div class="sa-drawer" id="saDrawer" aria-hidden="true">
+    <div class="sa-drawer-backdrop" id="saBackdrop"></div>
+    <nav class="sa-drawer-panel" id="saPanel">
+        <h1 style="padding:0 1.25rem;margin:0 0 1rem;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--muted);">Platform</h1>
+        <div class="nav">
+            <a href="{% url 'superadmin:dashboard' %}">Dashboard</a>
+            <a href="{% url 'superadmin:restaurant_list' %}">Restaurants</a>
+            <a href="{% url 'portal:login' %}">Outlet admin login</a>
+            <a href="{% url 'web:home' %}">Public site</a>
+        </div>
+    </nav>
+</div>
+<div class="layout">
+    <aside class="sidebar" aria-label="Sidebar">
+        <h1>Platform</h1>
+        <nav class="nav">
+            <a href="{% url 'superadmin:dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>Dashboard</a>
+            <a href="{% url 'superadmin:restaurant_list' %}" {% if 'restaurant' in request.resolver_match.url_name %}class="active"{% endif %}>Restaurants</a>
+            <a href="{% url 'portal:login' %}">Outlet admin</a>
+            <a href="{% url 'web:home' %}">Public site</a>
+        </nav>
+    </aside>
+    <div class="main">
+        <div class="topbar">
+            <button type="button" class="sa-menu-btn" id="saOpenNav" aria-label="Open menu">☰</button>
+            <h2>{% block heading %}Superadmin{% endblock %}</h2>
+            {% if user.is_superuser %}
+            <form class="filter-form" method="post" action="{% url 'superadmin:set_restaurant_filter' %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <label for="id_restaurant_filter" class="muted" style="margin:0;">Scope data</label>
+                <select name="restaurant" id="id_restaurant_filter" onchange="this.form.submit()">
+                    <option value="">— All restaurants —</option>
+                    {% for r in superadmin_nav_restaurants %}
+                    <option value="{{ r.pk }}" {% if superadmin_active_restaurant_id == r.pk %}selected{% endif %}>{{ r.name }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+            <div class="topbar-actions">
+                <form method="post" action="{% url 'superadmin:logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn">Sign out</button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+        {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </div>
+</div>
+<script>
+(function () {
+    var d = document.getElementById("saDrawer");
+    var btn = document.getElementById("saOpenNav");
+    var bd = document.getElementById("saBackdrop");
+    if (!d || !btn) return;
+    function openM() { d.classList.add("open"); d.setAttribute("aria-hidden", "false"); document.body.style.overflow = "hidden"; }
+    function closeM() { d.classList.remove("open"); d.setAttribute("aria-hidden", "true"); document.body.style.overflow = ""; }
+    btn.addEventListener("click", function (e) { e.preventDefault(); d.classList.contains("open") ? closeM() : openM(); });
+    if (bd) bd.addEventListener("click", closeM);
+    window.addEventListener("resize", function () { if (window.innerWidth > 768) closeM(); });
+})();
+</script>
+{% endblock %}
+</body>
+</html>

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>{% block title %}Outlet{% endblock %} · Pakoda</title>
+    <style>
+        /* Tally-inspired: neutral grays, blue title band, bordered panels, compact type */
+        :root {
+            --t-bg: #e8e6e3;
+            --t-panel: #ffffff;
+            --t-border: #8b8b8b;
+            --t-border-light: #b4b4b4;
+            --t-title: #1a5276;
+            --t-title-grad-b: #0d3d5c;
+            --t-text: #1a1a1a;
+            --t-muted: #555;
+            --t-row-alt: #f5f4f2;
+            --t-focus: #1a5276;
+            --t-btn: #e2e2e2;
+            --t-btn-border: #7a7a7a;
+            --t-primary: #1a5276;
+            --t-danger: #a52a2a;
+        }
+        * { box-sizing: border-box; }
+        html { -webkit-text-size-adjust: 100%; }
+        body {
+            margin: 0;
+            font-family: Tahoma, "Segoe UI", Geneva, Verdana, sans-serif;
+            font-size: 13px;
+            color: var(--t-text);
+            background: var(--t-bg);
+            min-height: 100vh;
+            line-height: 1.45;
+        }
+        a { color: var(--t-primary); }
+        a:hover { text-decoration: underline; }
+
+        .t-app {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .t-titlebar {
+            background: linear-gradient(180deg, var(--t-title) 0%, var(--t-title-grad-b) 100%);
+            color: #fff;
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            border-bottom: 1px solid #000;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.15);
+        }
+        .t-titlebar h1 {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            flex: 1;
+            min-width: 0;
+        }
+        .t-titlebar .t-sub {
+            font-size: 11px;
+            opacity: 0.9;
+            width: 100%;
+            order: 3;
+        }
+        @media (min-width: 600px) {
+            .t-titlebar .t-sub { width: auto; order: 0; }
+        }
+        .t-titlebar-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .t-nav-drawer {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            pointer-events: none;
+        }
+        .t-nav-drawer.open { pointer-events: auto; }
+        .t-nav-drawer-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,.35);
+            opacity: 0;
+            transition: opacity .2s;
+        }
+        .t-nav-drawer.open .t-nav-drawer-backdrop { opacity: 1; }
+        .t-nav-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: min(280px, 88vw);
+            background: var(--t-panel);
+            border-right: 2px solid var(--t-border);
+            box-shadow: 4px 0 16px rgba(0,0,0,.2);
+            transform: translateX(-100%);
+            transition: transform .2s ease;
+            padding: 12px 0;
+            overflow-y: auto;
+        }
+        .t-nav-drawer.open .t-nav-panel { transform: translateX(0); }
+        .t-nav-panel a {
+            display: block;
+            padding: 12px 16px;
+            min-height: 44px;
+            color: var(--t-text);
+            border-bottom: 1px solid var(--t-border-light);
+            text-decoration: none;
+        }
+        .t-nav-panel a:hover { background: var(--t-row-alt); }
+        .t-nav-panel a.active { background: #d6e8f5; font-weight: 700; }
+
+        .t-menu-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 44px;
+            min-height: 44px;
+            padding: 0 10px;
+            margin: -6px 8px -6px -6px;
+            background: rgba(255,255,255,.12);
+            border: 1px solid rgba(255,255,255,.35);
+            color: #fff;
+            border-radius: 2px;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+        }
+        .t-menu-btn:active { background: rgba(0,0,0,.15); }
+        @media (min-width: 900px) {
+            .t-menu-btn { display: none; }
+        }
+
+        .t-layout {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+        .t-sidebar {
+            display: none;
+            width: 200px;
+            flex-shrink: 0;
+            background: var(--t-panel);
+            border-right: 1px solid var(--t-border);
+            padding: 8px 0;
+        }
+        @media (min-width: 900px) {
+            .t-sidebar { display: block; }
+        }
+        .t-sidebar a {
+            display: block;
+            padding: 10px 14px;
+            color: var(--t-text);
+            text-decoration: none;
+            border-left: 3px solid transparent;
+        }
+        .t-sidebar a:hover { background: var(--t-row-alt); }
+        .t-sidebar a.active { border-left-color: var(--t-primary); background: #e8f0f7; font-weight: 700; }
+
+        .t-main {
+            flex: 1;
+            padding: 12px;
+            min-width: 0;
+            overflow-x: hidden;
+        }
+        @media (min-width: 600px) {
+            .t-main { padding: 16px 20px; }
+        }
+
+        .t-panel-box {
+            background: var(--t-panel);
+            border: 1px solid var(--t-border);
+            margin-bottom: 12px;
+            box-shadow: 1px 1px 0 rgba(0,0,0,.08);
+        }
+        .t-panel-head {
+            background: linear-gradient(180deg, #f0eeeb 0%, #e0ddd8 100%);
+            border-bottom: 1px solid var(--t-border);
+            padding: 8px 12px;
+            font-weight: 700;
+            font-size: 12px;
+        }
+        .t-panel-body { padding: 12px; }
+
+        .t-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+            padding: 0 14px;
+            font-size: 13px;
+            font-family: inherit;
+            background: var(--t-btn);
+            border: 1px solid var(--t-btn-border);
+            border-radius: 2px;
+            cursor: pointer;
+            color: var(--t-text);
+            text-decoration: none;
+        }
+        .t-btn:hover { background: #efefef; }
+        .t-btn:active { background: #d8d8d8; }
+        .t-btn-primary {
+            background: linear-gradient(180deg, #2e6d95 0%, var(--t-primary) 100%);
+            color: #fff;
+            border-color: #0d3d5c;
+        }
+        .t-btn-primary:hover { filter: brightness(1.05); color: #fff; text-decoration: none; }
+        .t-btn-ghost {
+            background: transparent;
+            border-color: transparent;
+            color: #fff;
+            min-height: 44px;
+        }
+        .t-btn-ghost:hover { background: rgba(255,255,255,.12); text-decoration: none; color: #fff; }
+
+        .t-input {
+            width: 100%;
+            max-width: 100%;
+            padding: 8px 10px;
+            font-size: 14px;
+            font-family: inherit;
+            border: 1px solid var(--t-border);
+            border-radius: 2px;
+            background: #fff;
+        }
+        .t-input:focus {
+            outline: 2px solid var(--t-focus);
+            outline-offset: 0;
+        }
+        .t-textarea { resize: vertical; min-height: 80px; }
+
+        .t-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table.t-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .t-table th, .t-table td {
+            border: 1px solid var(--t-border-light);
+            padding: 8px 10px;
+            text-align: left;
+        }
+        .t-table th {
+            background: linear-gradient(180deg, #f5f3f0 0%, #e8e5e0 100%);
+            font-weight: 700;
+        }
+        .t-table tr:nth-child(even) td { background: var(--t-row-alt); }
+
+        .t-messages { list-style: none; padding: 0; margin: 0 0 12px; }
+        .t-messages li {
+            padding: 10px 12px;
+            border: 1px solid var(--t-border);
+            margin-bottom: 6px;
+            background: #fff8e6;
+        }
+        .t-messages .error { background: #fdeaea; border-color: #c99; }
+        .t-messages .success { background: #e8f5e9; border-color: #8cb89c; }
+        .t-messages .info { background: #e3f2fd; }
+
+        .t-kv { display: grid; grid-template-columns: 1fr; gap: 4px; }
+        @media (min-width: 500px) {
+            .t-kv { grid-template-columns: 140px 1fr; }
+        }
+        .t-kv dt { color: var(--t-muted); font-weight: 600; }
+        .t-kv dd { margin: 0 0 8px; }
+        @media (min-width: 500px) {
+            .t-kv dd { margin: 0; }
+        }
+
+        .t-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+<div class="t-app">
+    <header class="t-titlebar">
+        <button type="button" class="t-menu-btn" id="tOpenNav" aria-label="Open menu">☰</button>
+        <h1>{% block app_title %}Outlet admin{% endblock %}</h1>
+        {% block titlebar_extra %}{% endblock %}
+        <div class="t-titlebar-actions">
+            {% block titlebar_actions %}{% endblock %}
+        </div>
+        {% block titlebar_sub %}{% endblock %}
+    </header>
+
+    <div class="t-nav-drawer" id="tNavDrawer" aria-hidden="true">
+        <div class="t-nav-drawer-backdrop" id="tNavBackdrop"></div>
+        <nav class="t-nav-panel" id="tNavPanel">
+            {% block nav_drawer %}
+            <a href="{% url 'portal:dashboard' %}">Home</a>
+            <a href="{% url 'portal:inventory' %}">Inventory</a>
+            {% endblock %}
+        </nav>
+    </div>
+
+    <div class="t-layout">
+        <aside class="t-sidebar" aria-label="Main menu">
+            {% block sidebar %}
+            <a href="{% url 'portal:dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>Dashboard</a>
+            <a href="{% url 'portal:inventory' %}" {% if request.resolver_match.url_name == 'inventory' %}class="active"{% endif %}>Inventory</a>
+            {% if can_edit_restaurant|default:False %}
+            <a href="{% url 'portal:restaurant_edit' %}" {% if request.resolver_match.url_name == 'restaurant_edit' %}class="active"{% endif %}>Outlet details</a>
+            {% endif %}
+            <a href="{% url 'web:home' %}">Public website</a>
+            {% endblock %}
+        </aside>
+        <main class="t-main">
+            {% if messages %}
+            <ul class="t-messages">
+                {% for message in messages %}
+                <li class="{{ message.tags }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</div>
+<script>
+(function () {
+    var drawer = document.getElementById("tNavDrawer");
+    var openBtn = document.getElementById("tOpenNav");
+    var backdrop = document.getElementById("tNavBackdrop");
+    if (!drawer || !openBtn) return;
+    function openNav() {
+        drawer.classList.add("open");
+        drawer.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+    }
+    function closeNav() {
+        drawer.classList.remove("open");
+        drawer.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+    }
+    openBtn.addEventListener("click", function (e) {
+        e.preventDefault();
+        if (drawer.classList.contains("open")) closeNav(); else openNav();
+    });
+    if (backdrop) backdrop.addEventListener("click", closeNav);
+    window.addEventListener("resize", function () {
+        if (window.innerWidth >= 900) closeNav();
+    });
+})();
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

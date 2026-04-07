@@ -1,0 +1,757 @@
+{% extends "portal/base.html" %}
+{% block title %}Menu{% endblock %}
+{% block app_title %}Menu management{% endblock %}
+{% block titlebar_sub %}
+<span class="t-sub">{{ restaurant.name }}{% if staff %} · {{ staff.get_role_display }}{% else %} · Superadmin{% endif %}</span>
+{% endblock %}
+{% block titlebar_actions %}
+<form method="post" action="{% url 'portal:logout' %}" style="margin:0;">
+    {% csrf_token %}
+    <button type="submit" class="t-btn-ghost">Sign out</button>
+</form>
+{% endblock %}
+{% block nav_drawer %}
+<a href="{% url 'portal:dashboard' %}">Dashboard</a>
+<a href="{% url 'portal:inventory' %}">Inventory</a>
+<a href="{% url 'portal:menu' %}" class="active">Menu</a>
+{% if can_edit_restaurant %}
+<a href="{% url 'portal:restaurant_edit' %}">Outlet details</a>
+{% endif %}
+<a href="{% url 'web:home' %}">Public website</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.mm-muted { color: var(--t-muted); font-size: 12px; }
+.mm-cat-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; align-items: center; }
+.mm-cat-row button { min-height: 40px; padding: 0 12px; font-size: 13px; border: 1px solid var(--t-border); background: #eee; cursor: pointer; border-radius: 2px; }
+.mm-cat-row button.active { background: #b8d4ea; font-weight: 700; border-color: var(--t-primary); color: #0d3d5c; }
+.mm-grid {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(2, 1fr);
+}
+@media (min-width: 700px) { .mm-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1000px) { .mm-grid { grid-template-columns: repeat(4, 1fr); } }
+.mm-card {
+    background: #fff;
+    border: 1px solid var(--t-border);
+    padding: 8px;
+    border-radius: 2px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.mm-card .mm-thumb {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    background: #f0f0f0;
+    border: 1px solid var(--t-border-light);
+}
+.mm-ph {
+    aspect-ratio: 1;
+    background: #eee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    font-size: 11px;
+    text-align: center;
+    padding: 6px;
+    border: 1px dashed #999;
+}
+.mm-card strong { font-size: 13px; line-height: 1.25; }
+.mm-card .mm-price { font-weight: 700; color: var(--t-title); }
+.mm-panel {
+    background: #fafafa;
+    border: 1px solid var(--t-border-light);
+    padding: 12px;
+    margin: 14px 0;
+    border-radius: 2px;
+}
+.mm-panel h4 { margin: 0 0 10px; font-size: 13px; }
+.mm-ing-search { position: relative; }
+.mm-ing-results {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    z-index: 40;
+    max-height: 180px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid var(--t-border);
+    display: none;
+    box-shadow: 0 4px 10px rgba(0,0,0,.12);
+}
+.mm-ing-results button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 8px 10px;
+    border: 0;
+    border-bottom: 1px solid #eee;
+    background: #fff;
+    cursor: pointer;
+    font-size: 13px;
+}
+#mmToast {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: min(92vw, 420px);
+    z-index: 400;
+    padding: 12px 16px;
+    font-size: 13px;
+    border: 1px solid var(--t-border);
+    background: #fffde7;
+    box-shadow: 0 4px 12px rgba(0,0,0,.15);
+    display: none;
+}
+#mmToast.err { background: #fdeaea; }
+#mmToast.ok { background: #e8f5e9; }
+</style>
+{% endblock %}
+
+{% block content %}
+<p class="mm-muted" style="margin-top:0;">
+    Public catalog (for apps / site): <code id="mmPublicUrl"></code>
+</p>
+{% if not can_edit_menu %}
+<p class="inv-banner show" style="display:block;">View only — only restaurant admins can change categories, items, or photos.</p>
+{% endif %}
+
+<div class="t-panel-box">
+    <div class="t-panel-head">Categories</div>
+    <div class="t-panel-body">
+        <div id="mmCatChips" class="mm-cat-row"></div>
+        {% if can_edit_menu %}
+        <div class="mm-panel">
+            <h4>New category</h4>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;">
+                <div><label class="mm-muted">Name</label><br /><input class="t-input" id="mmNewCatName" style="min-width:160px;" /></div>
+                <div><label class="mm-muted">Sort</label><br /><input class="t-input" id="mmNewCatSort" type="number" value="0" style="width:72px;" /></div>
+                <button type="button" class="t-btn t-btn-primary" id="mmBtnCatCreate">Add category</button>
+            </div>
+        </div>
+        <div class="mm-panel" id="mmCatEdit" style="display:none;">
+            <h4>Edit selected category</h4>
+            <input type="hidden" id="mmEditCatId" />
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:420px;">
+                <div style="grid-column:1/-1;"><label class="mm-muted">Name</label><input class="t-input" id="mmEditCatName" style="width:100%;" /></div>
+                <div><label class="mm-muted">Sort</label><input class="t-input" id="mmEditCatSort" type="number" /></div>
+                <div><label class="mm-muted"><input type="checkbox" id="mmEditCatActive" /> Active</label></div>
+            </div>
+            <div style="margin-top:10px;">
+                <label class="mm-muted">Category image</label><br />
+                <input type="file" id="mmEditCatImage" accept="image/*" />
+                <button type="button" class="t-btn" id="mmBtnCatImage">Upload image</button>
+            </div>
+            <div class="t-actions" style="margin-top:10px;">
+                <button type="button" class="t-btn t-btn-primary" id="mmBtnCatSave">Save category</button>
+                <button type="button" class="t-btn" id="mmBtnCatDelete" style="border-color:var(--t-danger);color:var(--t-danger);">Delete category</button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="t-panel-box">
+    <div class="t-panel-head">Menu items <span class="mm-muted" style="font-weight:normal;">(tap a category above)</span></div>
+    <div class="t-panel-body">
+        <p class="mm-muted" id="mmItemsHint">Select a category to see items.</p>
+        <div id="mmGrid" class="mm-grid" style="display:none;"></div>
+        {% if can_edit_menu %}
+        <div class="mm-panel" id="mmItemForm" style="display:none;">
+            <h4 id="mmItemFormTitle">New menu item</h4>
+            <input type="hidden" id="mmItemId" value="" />
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:520px;">
+                <div style="grid-column:1/-1;"><label class="mm-muted">Name</label><input class="t-input" id="mmItemName" style="width:100%;" /></div>
+                <div style="grid-column:1/-1;"><label class="mm-muted">Portion (e.g. 1 pc, 250 g)</label><input class="t-input" id="mmItemPortion" style="width:100%;" placeholder="250 g plate" /></div>
+                <div><label class="mm-muted">Price (NPR)</label><input class="t-input" id="mmItemPrice" type="number" step="0.01" /></div>
+                <div><label class="mm-muted">Sort</label><input class="t-input" id="mmItemSort" type="number" value="0" /></div>
+                <div style="grid-column:1/-1;"><label class="mm-muted">Description</label><textarea class="t-input" id="mmItemDesc" rows="2" style="width:100%;resize:vertical;"></textarea></div>
+                <div><label class="mm-muted"><input type="checkbox" id="mmItemActive" checked /> Active</label></div>
+                <div><label class="mm-muted"><input type="checkbox" id="mmItemPublic" checked /> Show on public menu</label></div>
+            </div>
+            <div style="margin-top:10px;">
+                <label class="mm-muted">Item image</label><br />
+                <input type="file" id="mmItemImage" accept="image/*" />
+                <button type="button" class="t-btn" id="mmBtnItemImage">Upload image</button>
+            </div>
+            <div class="t-actions" style="margin-top:10px;">
+                <button type="button" class="t-btn t-btn-primary" id="mmBtnItemSave">Save item</button>
+                <button type="button" class="t-btn" id="mmBtnItemCancel">Cancel</button>
+                <button type="button" class="t-btn" id="mmBtnItemDelete" style="border-color:var(--t-danger);color:var(--t-danger);display:none;">Delete item</button>
+            </div>
+        </div>
+        <div class="mm-panel" id="mmIngPanel" style="display:none;">
+            <h4>Stock use per portion <span class="mm-muted">(inventory link)</span></h4>
+            <p class="mm-muted" style="margin:0 0 8px;">Stored quantity matches inventory. For <strong>kg</strong> or <strong>litre</strong> items, choose <strong>gram</strong> or <strong>ml</strong> and type the amount — we convert to kg/L for stock.</p>
+            <div class="mm-ing-search">
+                <label class="mm-muted">Add ingredient</label>
+                <input type="search" class="t-input" id="mmIngSearch" placeholder="Search stock item…" style="width:100%;max-width:320px;" autocomplete="off" />
+                <div id="mmIngResults" class="mm-ing-results"></div>
+            </div>
+            <p class="mm-muted" id="mmIngQtyHint" style="margin:6px 0;font-size:11px;"></p>
+            <div id="mmIngQtySimple" style="display:grid;grid-template-columns:100px 1fr;align-items:center;gap:8px;max-width:400px;margin-top:8px;">
+                <label class="mm-muted" id="mmIngQtyLabel">Qty</label>
+                <input class="t-input" id="mmIngQty" type="number" step="0.0001" value="1" />
+            </div>
+            <div id="mmIngQtySub" style="display:none;margin-top:8px;">
+                <label class="mm-muted" style="font-size:11px;display:block;margin-bottom:4px;">Amount &amp; sub-unit</label>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;max-width:480px;">
+                    <input class="t-input" id="mmIngSubValue" type="number" step="any" min="0" placeholder="e.g. 10" style="width:120px;" />
+                    <select class="t-input" id="mmIngSubUnit" style="min-width:160px;"></select>
+                </div>
+            </div>
+            <p class="mm-muted" id="mmIngConvertedHint" style="margin:6px 0;font-size:11px;"></p>
+            <button type="button" class="t-btn" id="mmBtnIngAdd" style="margin-top:8px;">Add line</button>
+            <div class="t-table-wrap" style="margin-top:12px;">
+                <table class="t-table" id="mmTblIng">
+                    <thead><tr><th>Stock #</th><th>Item</th><th>Unit</th><th>Qty</th><th>Note</th><th></th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div id="mmToast"></div>
+
+<script>
+(function () {
+    var CSRF = "{{ csrf_token }}";
+    var API_MENU = "/api/menu/";
+    var API_INV = "/api/inventory/";
+    var CAN_EDIT = {{ can_edit_menu|yesno:"true,false" }};
+    var selectedCatId = null;
+    var selectedItem = null;
+    var ingPick = null;
+    var ingTimer = null;
+    var cats = [];
+    var items = [];
+
+    function toast(msg, cls) {
+        var el = document.getElementById("mmToast");
+        el.textContent = msg;
+        el.className = cls || "";
+        el.style.display = "block";
+        clearTimeout(el._t);
+        el._t = setTimeout(function () { el.style.display = "none"; }, 4000);
+    }
+
+    function apiJson(path, opts) {
+        opts = opts || {};
+        var headers = Object.assign({
+            "Content-Type": "application/json",
+            "X-CSRFToken": CSRF
+        }, opts.headers || {});
+        return fetch(API_MENU + path, Object.assign({ credentials: "same-origin", headers: headers }, opts))
+            .then(function (r) {
+                return r.text().then(function (t) {
+                    if (r.status === 204 || (r.ok && (!t || !t.trim()))) {
+                        return null;
+                    }
+                    var j = null;
+                    try { j = t ? JSON.parse(t) : null; } catch (e) { j = { detail: t }; }
+                    if (!r.ok) {
+                        var m = j && j.detail;
+                        if (typeof m !== "string") m = JSON.stringify(m || j);
+                        throw new Error(m || r.statusText);
+                    }
+                    return j;
+                });
+            });
+    }
+
+    function apiForm(path, formData) {
+        return fetch(API_MENU + path, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "X-CSRFToken": CSRF },
+            body: formData
+        }).then(function (r) {
+            return r.text().then(function (t) {
+                var j = null;
+                try { j = t ? JSON.parse(t) : null; } catch (e) { j = { detail: t }; }
+                if (!r.ok) {
+                    var m = j && j.detail;
+                    if (typeof m !== "string") m = JSON.stringify(m || j);
+                    throw new Error(m || r.statusText);
+                }
+                return j;
+            });
+        });
+    }
+
+    function escapeHtml(s) {
+        var d = document.createElement("div");
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    function supportsIngredientSubUnits(it) {
+        if (!it) return false;
+        var ut = it.unit_type;
+        return ut === "kg" || ut === "vegetable" || ut === "liter";
+    }
+
+    function syncIngredientQtyControls(it) {
+        var simple = document.getElementById("mmIngQtySimple");
+        var sub = document.getElementById("mmIngQtySub");
+        var sel = document.getElementById("mmIngSubUnit");
+        var subVal = document.getElementById("mmIngSubValue");
+        if (!simple || !sub || !sel) return;
+        if (!supportsIngredientSubUnits(it)) {
+            simple.style.display = "grid";
+            sub.style.display = "none";
+            var ch = document.getElementById("mmIngConvertedHint");
+            if (ch) ch.textContent = "";
+            return;
+        }
+        simple.style.display = "none";
+        sub.style.display = "grid";
+        sel.innerHTML = "";
+        var ut = it.unit_type;
+        if (ut === "kg" || ut === "vegetable") {
+            sel.innerHTML = '<option value="g">gram (g)</option><option value="kg">kg</option>';
+            sel.value = "g";
+            if (subVal) subVal.value = "10";
+        } else if (ut === "liter") {
+            sel.innerHTML = '<option value="ml">millilitre (ml)</option><option value="L">litre (L)</option>';
+            sel.value = "ml";
+            if (subVal) subVal.value = "100";
+        }
+        updateMmIngConvertedPreview();
+    }
+
+    function ingredientQtyToCanonical(it) {
+        if (!it) return NaN;
+        if (!supportsIngredientSubUnits(it)) {
+            var q = parseFloat(document.getElementById("mmIngQty").value);
+            return isNaN(q) || q <= 0 ? NaN : q;
+        }
+        var sub = document.getElementById("mmIngSubUnit").value;
+        var v = parseFloat(document.getElementById("mmIngSubValue").value);
+        if (isNaN(v) || v <= 0) return NaN;
+        var ut = it.unit_type;
+        if (ut === "kg" || ut === "vegetable") {
+            return sub === "g" ? v / 1000 : v;
+        }
+        if (ut === "liter") {
+            return sub === "ml" ? v / 1000 : v;
+        }
+        return v;
+    }
+
+    function fmtQtyTrim(x) {
+        if (isNaN(x)) return "";
+        return String(x.toFixed(6)).replace(/\.?0+$/, "");
+    }
+
+    function updateMmIngConvertedPreview() {
+        var hint = document.getElementById("mmIngConvertedHint");
+        if (!hint || !ingPick) return;
+        if (!supportsIngredientSubUnits(ingPick)) {
+            hint.textContent = "";
+            return;
+        }
+        var q = ingredientQtyToCanonical(ingPick);
+        if (isNaN(q) || q <= 0) {
+            hint.textContent = "";
+            return;
+        }
+        var pr = ingPick.pricing || {};
+        var su = pr.stock_unit || (ingPick.unit_type === "liter" ? "L" : "kg");
+        hint.textContent = "→ Stored as " + fmtQtyTrim(q) + " " + su + " (inventory)";
+    }
+
+    function resetIngredientQtyFields() {
+        var simple = document.getElementById("mmIngQtySimple");
+        var sub = document.getElementById("mmIngQtySub");
+        if (simple) simple.style.display = "grid";
+        if (sub) sub.style.display = "none";
+        var q = document.getElementById("mmIngQty");
+        if (q) q.value = "1";
+        var h = document.getElementById("mmIngConvertedHint");
+        if (h) h.textContent = "";
+        var lbl = document.getElementById("mmIngQtyLabel");
+        if (lbl) lbl.textContent = "Qty";
+    }
+
+    function renderCatChips() {
+        var box = document.getElementById("mmCatChips");
+        box.innerHTML = "";
+        cats.forEach(function (c) {
+            var b = document.createElement("button");
+            b.type = "button";
+            b.textContent = c.name + (c.is_active ? "" : " (off)");
+            if (selectedCatId === c.id) b.classList.add("active");
+            b.addEventListener("click", function () {
+                selectedCatId = c.id;
+                renderCatChips();
+                loadItems();
+                if (CAN_EDIT) showCatEdit(c);
+            });
+            box.appendChild(b);
+        });
+        if (CAN_EDIT) {
+            var add = document.createElement("button");
+            add.type = "button";
+            add.textContent = "+ Item in category";
+            add.style.opacity = selectedCatId ? "1" : "0.5";
+            add.disabled = !selectedCatId;
+            add.addEventListener("click", function () {
+                if (!selectedCatId) return;
+                openNewItem();
+            });
+            box.appendChild(add);
+        }
+    }
+
+    function showCatEdit(c) {
+        document.getElementById("mmCatEdit").style.display = "block";
+        document.getElementById("mmEditCatId").value = String(c.id);
+        document.getElementById("mmEditCatName").value = c.name;
+        document.getElementById("mmEditCatSort").value = String(c.sort_order);
+        document.getElementById("mmEditCatActive").checked = !!c.is_active;
+    }
+
+    function loadCategories() {
+        return apiJson("categories/").then(function (rows) {
+            cats = rows || [];
+            if (!selectedCatId && cats.length) selectedCatId = cats[0].id;
+            renderCatChips();
+            if (selectedCatId && CAN_EDIT) {
+                var c = cats.filter(function (x) { return x.id === selectedCatId; })[0];
+                if (c) showCatEdit(c);
+            }
+            loadItems();
+        }).catch(function (e) { toast(String(e.message), "err"); });
+    }
+
+    function loadItems() {
+        var grid = document.getElementById("mmGrid");
+        var hint = document.getElementById("mmItemsHint");
+        if (!selectedCatId) {
+            grid.style.display = "none";
+            hint.style.display = "block";
+            hint.textContent = "Select or create a category.";
+            return;
+        }
+        hint.textContent = "Loading…";
+        return apiJson("items/?category=" + encodeURIComponent(selectedCatId)).then(function (rows) {
+            items = rows || [];
+            hint.style.display = items.length ? "none" : "block";
+            hint.textContent = items.length ? "" : "No items in this category yet.";
+            grid.style.display = items.length ? "grid" : "none";
+            grid.innerHTML = "";
+            items.forEach(function (it) {
+                var card = document.createElement("div");
+                card.className = "mm-card";
+                var img = it.image_url
+                    ? "<img class=\"mm-thumb\" src=\"" + escapeHtml(it.image_url) + "\" alt=\"\" />"
+                    : "<div class=\"mm-ph\">No photo</div>";
+                card.innerHTML =
+                    img +
+                    "<strong>" + escapeHtml(it.name) + "</strong>" +
+                    "<div class=\"mm-muted\">" + escapeHtml(it.portion_label || "—") + "</div>" +
+                    "<div class=\"mm-price\">NPR " + escapeHtml(String(it.sell_price)) + "</div>";
+                if (CAN_EDIT) {
+                    var btn = document.createElement("button");
+                    btn.type = "button";
+                    btn.className = "t-btn";
+                    btn.textContent = "Edit";
+                    btn.addEventListener("click", function () { openEditItem(it); });
+                    card.appendChild(btn);
+                }
+                grid.appendChild(card);
+            });
+        }).catch(function (e) {
+            toast(String(e.message), "err");
+            hint.textContent = "Could not load items.";
+        });
+    }
+
+    function hideItemForm() {
+        document.getElementById("mmItemForm").style.display = "none";
+        document.getElementById("mmIngPanel").style.display = "none";
+        selectedItem = null;
+        ingPick = null;
+        resetIngredientQtyFields();
+        var ms = document.getElementById("mmIngSearch");
+        if (ms) ms.value = "";
+        var hi = document.getElementById("mmIngQtyHint");
+        if (hi) hi.textContent = "";
+    }
+
+    function openNewItem() {
+        document.getElementById("mmItemForm").style.display = "block";
+        document.getElementById("mmItemFormTitle").textContent = "New menu item";
+        document.getElementById("mmItemId").value = "";
+        document.getElementById("mmItemName").value = "";
+        document.getElementById("mmItemPortion").value = "";
+        document.getElementById("mmItemPrice").value = "0";
+        document.getElementById("mmItemSort").value = "0";
+        document.getElementById("mmItemDesc").value = "";
+        document.getElementById("mmItemActive").checked = true;
+        document.getElementById("mmItemPublic").checked = true;
+        document.getElementById("mmBtnItemDelete").style.display = "none";
+        document.getElementById("mmIngPanel").style.display = "none";
+        selectedItem = null;
+    }
+
+    function openEditItem(it) {
+        selectedItem = it;
+        ingPick = null;
+        var ms = document.getElementById("mmIngSearch");
+        if (ms) ms.value = "";
+        resetIngredientQtyFields();
+        var hi = document.getElementById("mmIngQtyHint");
+        if (hi) hi.textContent = "";
+        document.getElementById("mmItemForm").style.display = "block";
+        document.getElementById("mmItemFormTitle").textContent = "Edit menu item";
+        document.getElementById("mmItemId").value = String(it.id);
+        document.getElementById("mmItemName").value = it.name;
+        document.getElementById("mmItemPortion").value = it.portion_label || "";
+        document.getElementById("mmItemPrice").value = it.sell_price;
+        document.getElementById("mmItemSort").value = String(it.sort_order);
+        document.getElementById("mmItemDesc").value = it.description || "";
+        document.getElementById("mmItemActive").checked = !!it.is_active;
+        document.getElementById("mmItemPublic").checked = !!it.show_on_public_site;
+        document.getElementById("mmBtnItemDelete").style.display = "inline-flex";
+        document.getElementById("mmIngPanel").style.display = "block";
+        renderIngredients(it.ingredients || []);
+    }
+
+    function renderIngredients(lines) {
+        var tb = document.querySelector("#mmTblIng tbody");
+        tb.innerHTML = "";
+        (lines || []).forEach(function (ln) {
+            var tr = document.createElement("tr");
+            var mp = ln.master_pricing || {};
+            var uhint = escapeHtml(mp.ingredient_hint || ln.master_unit_type || "");
+            tr.innerHTML =
+                "<td>" + ln.product_num + "</td>" +
+                "<td>" + escapeHtml(ln.master_item_name) + "</td>" +
+                "<td title=\"" + uhint + "\">" + escapeHtml(ln.master_unit_type || "—") + "</td>" +
+                "<td>" + escapeHtml(String(ln.quantity)) + "</td>" +
+                "<td>" + escapeHtml(ln.note || "—") + "</td>";
+            if (CAN_EDIT && selectedItem) {
+                var td = document.createElement("td");
+                var rm = document.createElement("button");
+                rm.type = "button";
+                rm.className = "t-btn";
+                rm.textContent = "Remove";
+                rm.addEventListener("click", function () {
+                    apiJson("items/" + selectedItem.id + "/ingredients/" + ln.id + "/", { method: "DELETE" })
+                        .then(function () {
+                            return apiJson("items/" + selectedItem.id + "/");
+                        })
+                        .then(function (fresh) {
+                            selectedItem = fresh;
+                            openEditItem(fresh);
+                            loadItems();
+                            toast("Ingredient removed", "ok");
+                        })
+                        .catch(function (e) { toast(String(e.message), "err"); });
+                });
+                td.appendChild(rm);
+                tr.appendChild(td);
+            } else {
+                tr.innerHTML += "<td></td>";
+            }
+            tb.appendChild(tr);
+        });
+        if (!(lines || []).length) {
+            tb.innerHTML = '<tr><td colspan="6" class="mm-muted">No ingredient lines.</td></tr>';
+        }
+    }
+
+    document.getElementById("mmPublicUrl").textContent =
+        window.location.origin + "/api/menu/public/?restaurant={{ restaurant.id }}";
+
+    if (CAN_EDIT) {
+        document.getElementById("mmBtnCatCreate").addEventListener("click", function () {
+            var n = document.getElementById("mmNewCatName").value.trim();
+            if (!n) { toast("Category name required", "err"); return; }
+            var so = parseInt(document.getElementById("mmNewCatSort").value, 10) || 0;
+            apiJson("categories/", {
+                method: "POST",
+                body: JSON.stringify({ name: n, sort_order: so, is_active: true })
+            }).then(function () {
+                document.getElementById("mmNewCatName").value = "";
+                toast("Category created", "ok");
+                return loadCategories();
+            }).catch(function (e) { toast(String(e.message), "err"); });
+        });
+
+        document.getElementById("mmBtnCatSave").addEventListener("click", function () {
+            var id = document.getElementById("mmEditCatId").value;
+            if (!id) return;
+            apiJson("categories/" + id + "/", {
+                method: "PATCH",
+                body: JSON.stringify({
+                    name: document.getElementById("mmEditCatName").value.trim(),
+                    sort_order: parseInt(document.getElementById("mmEditCatSort").value, 10) || 0,
+                    is_active: document.getElementById("mmEditCatActive").checked
+                })
+            }).then(function () {
+                toast("Category saved", "ok");
+                return loadCategories();
+            }).catch(function (e) { toast(String(e.message), "err"); });
+        });
+
+        document.getElementById("mmBtnCatDelete").addEventListener("click", function () {
+            var id = document.getElementById("mmEditCatId").value;
+            if (!id || !confirm("Delete this category and all its menu items?")) return;
+            apiJson("categories/" + id + "/", { method: "DELETE" })
+                .then(function () {
+                    selectedCatId = null;
+                    toast("Category deleted", "ok");
+                    document.getElementById("mmCatEdit").style.display = "none";
+                    return loadCategories();
+                })
+                .catch(function (e) { toast(String(e.message), "err"); });
+        });
+
+        document.getElementById("mmBtnCatImage").addEventListener("click", function () {
+            var id = document.getElementById("mmEditCatId").value;
+            var inp = document.getElementById("mmEditCatImage");
+            if (!id || !inp.files || !inp.files[0]) { toast("Choose an image", "err"); return; }
+            var fd = new FormData();
+            fd.append("image", inp.files[0]);
+            apiForm("categories/" + id + "/image/", fd)
+                .then(function () {
+                    toast("Category image updated", "ok");
+                    inp.value = "";
+                    return loadCategories();
+                })
+                .catch(function (e) { toast(String(e.message), "err"); });
+        });
+
+        document.getElementById("mmBtnItemSave").addEventListener("click", function () {
+            var id = document.getElementById("mmItemId").value;
+            var body = {
+                category: selectedCatId,
+                name: document.getElementById("mmItemName").value.trim(),
+                portion_label: document.getElementById("mmItemPortion").value.trim(),
+                sell_price: document.getElementById("mmItemPrice").value || "0",
+                sort_order: parseInt(document.getElementById("mmItemSort").value, 10) || 0,
+                description: document.getElementById("mmItemDesc").value.trim(),
+                is_active: document.getElementById("mmItemActive").checked,
+                show_on_public_site: document.getElementById("mmItemPublic").checked
+            };
+            if (!body.name) { toast("Item name required", "err"); return; }
+            if (!selectedCatId) { toast("Select a category", "err"); return; }
+            var req = id
+                ? apiJson("items/" + id + "/", { method: "PATCH", body: JSON.stringify(body) })
+                : apiJson("items/", { method: "POST", body: JSON.stringify(body) });
+            req.then(function (saved) {
+                toast("Item saved", "ok");
+                openEditItem(saved);
+                return loadItems();
+            }).catch(function (e) { toast(String(e.message), "err"); });
+        });
+
+        document.getElementById("mmBtnItemCancel").addEventListener("click", hideItemForm);
+
+        document.getElementById("mmBtnItemDelete").addEventListener("click", function () {
+            var id = document.getElementById("mmItemId").value;
+            if (!id || !confirm("Delete this menu item?")) return;
+            apiJson("items/" + id + "/", { method: "DELETE" })
+                .then(function () {
+                    hideItemForm();
+                    toast("Item deleted", "ok");
+                    return loadItems();
+                })
+                .catch(function (e) { toast(String(e.message), "err"); });
+        });
+
+        document.getElementById("mmBtnItemImage").addEventListener("click", function () {
+            var id = document.getElementById("mmItemId").value;
+            var inp = document.getElementById("mmItemImage");
+            if (!id) { toast("Save the item first, then upload a photo", "err"); return; }
+            if (!inp.files || !inp.files[0]) { toast("Choose an image", "err"); return; }
+            var fd = new FormData();
+            fd.append("image", inp.files[0]);
+            apiForm("items/" + id + "/image/", fd)
+                .then(function (fresh) {
+                    toast("Image updated", "ok");
+                    inp.value = "";
+                    openEditItem(fresh);
+                    return loadItems();
+                })
+                .catch(function (e) { toast(String(e.message), "err"); });
+        });
+
+        document.getElementById("mmIngSearch").addEventListener("input", function () {
+            var qv = this.value.trim();
+            clearTimeout(ingTimer);
+            var box = document.getElementById("mmIngResults");
+            if (qv.length < 1) { box.style.display = "none"; return; }
+            ingTimer = setTimeout(function () {
+                fetch(API_INV + "master-items/?q=" + encodeURIComponent(qv), {
+                    credentials: "same-origin",
+                    headers: { "X-CSRFToken": CSRF }
+                }).then(function (r) { return r.json(); }).then(function (rows) {
+                    box.innerHTML = "";
+                    (rows || []).slice(0, 15).forEach(function (it) {
+                        var btn = document.createElement("button");
+                        btn.type = "button";
+                        btn.textContent = "#" + it.product_num + " · " + it.name;
+                        btn.addEventListener("click", function () {
+                            ingPick = it;
+                            box.style.display = "none";
+                            var pr = it.pricing || {};
+                            var su = pr.stock_unit || it.unit_type || "";
+                            var lbl = document.getElementById("mmIngQtyLabel");
+                            var hi = document.getElementById("mmIngQtyHint");
+                            if (lbl) lbl.textContent = supportsIngredientSubUnits(it) ? "Qty (use fields below)" : "Qty (" + su + ")";
+                            if (hi) hi.textContent = pr.ingredient_hint || pr.qty_hint || "";
+                            syncIngredientQtyControls(it);
+                            toast("Selected #" + it.product_num + (supportsIngredientSubUnits(it) ? " — enter g/ml or kg/L" : ""), "ok");
+                        });
+                        box.appendChild(btn);
+                    });
+                    box.style.display = box.childNodes.length ? "block" : "none";
+                }).catch(function () { box.style.display = "none"; });
+            }, 300);
+        });
+
+        document.getElementById("mmBtnIngAdd").addEventListener("click", function () {
+            if (!selectedItem) { toast("Open an item with Edit first", "err"); return; }
+            if (!ingPick) { toast("Pick a stock item from search", "err"); return; }
+            var qtyCanon = ingredientQtyToCanonical(ingPick);
+            if (isNaN(qtyCanon) || qtyCanon <= 0) {
+                toast("Enter a valid amount", "err");
+                return;
+            }
+            apiJson("items/" + selectedItem.id + "/ingredients/", {
+                method: "POST",
+                body: JSON.stringify({ master_item_id: ingPick.id, quantity: String(qtyCanon), note: "" })
+            }).then(function () {
+                return apiJson("items/" + selectedItem.id + "/");
+            }).then(function (fresh) {
+                ingPick = null;
+                document.getElementById("mmIngSearch").value = "";
+                resetIngredientQtyFields();
+                openEditItem(fresh);
+                toast("Ingredient line added", "ok");
+            }).catch(function (e) { toast(String(e.message), "err"); });
+        });
+
+        var mmSub = document.getElementById("mmIngSubUnit");
+        var mmSv = document.getElementById("mmIngSubValue");
+        if (mmSub) mmSub.addEventListener("change", updateMmIngConvertedPreview);
+        if (mmSv) mmSv.addEventListener("input", updateMmIngConvertedPreview);
+    }
+
+    loadCategories();
+})();
+</script>
+{% endblock %}

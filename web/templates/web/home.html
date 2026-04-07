@@ -1,0 +1,559 @@
+{% extends "web/base.html" %}
+{% load static %}
+
+{% block title %}Pakoda By Kilo - Food & Snacks{% endblock %}
+
+{% block extra_head %}
+<style>
+        .brand-logo {
+            font-size: 1.7rem;
+            letter-spacing: 2px;
+            font-weight: 700;
+            line-height: 1.1;
+            white-space: nowrap;
+        }
+
+        .carousel-main-title {
+            font-size: 2.2rem;
+            line-height: 1.2;
+            font-weight: 700;
+        }
+
+        .vision-point {
+            font-size: 0.95rem;
+            margin-bottom: 0.65rem;
+        }
+
+        .story-timeline {
+            border-left: 3px solid #DA9F5B;
+            padding-left: 1rem;
+            margin-top: 1rem;
+        }
+
+        .story-step {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .story-step:last-child {
+            margin-bottom: 0;
+        }
+
+        .story-step::before {
+            content: "";
+            position: absolute;
+            left: -1.42rem;
+            top: 0.35rem;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #DA9F5B;
+        }
+
+        .story-step h6 {
+            margin-bottom: 0.3rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.82rem;
+            letter-spacing: 0.6px;
+            color: #DA9F5B;
+        }
+
+        .story-step p {
+            margin-bottom: 0;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .category-title {
+            font-size: 1rem;
+            margin-bottom: 0.45rem;
+        }
+
+        .category-text {
+            font-size: 0.85rem;
+            line-height: 1.45;
+        }
+
+        .category-card {
+            height: 100%;
+            padding: 0.9rem;
+            background: transparent;
+            border: 0;
+            border-radius: 0;
+        }
+
+        .category-link {
+            display: block;
+            color: inherit;
+            text-decoration: none;
+            height: 100%;
+        }
+
+        .category-link:hover {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .category-link .category-card {
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+
+        .category-link:hover .category-card {
+            transform: translateY(-3px);
+            opacity: 0.92;
+        }
+
+        .category-image {
+            width: 100%;
+            height: 135px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 0.7rem;
+        }
+
+        .menu-grid-card {
+            padding: 0.55rem;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.96);
+            text-align: center;
+            height: 100%;
+        }
+
+        .menu-grid-image {
+            width: 100%;
+            height: 88px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 0.45rem;
+        }
+
+        .menu-grid-name {
+            font-size: 0.82rem;
+            font-weight: 700;
+            line-height: 1.25;
+            margin-bottom: 0.15rem;
+        }
+
+        .menu-grid-price {
+            font-size: 0.78rem;
+            color: #DA9F5B;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        @media (max-width: 991.98px) {
+            .brand-logo {
+                font-size: 1.25rem;
+                letter-spacing: 1.5px;
+            }
+
+            .carousel-main-title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<!-- Carousel Start -->
+    <div class="container-fluid p-0 mb-5">
+        <div id="blog-carousel" class="carousel slide overlay-bottom" data-ride="carousel">
+            <div class="carousel-inner">
+                <div class="carousel-item active">
+                    <img class="w-100" src="{% static 'web/img/carsoul1.avif' %}" alt="Image">
+                    <div class="carousel-caption d-flex flex-column align-items-center justify-content-center">
+                        <h2 class="text-primary font-weight-medium m-0">Welcome to Pakoda By Kilo</h2>
+                        <h1 class="text-white m-0 carousel-main-title">Pizza, Pakoda, Tea, Sausages & More</h1>
+                        <h2 class="text-white m-0">* 100+ FOOD ITEMS | OPENING SOON ON BAISAKH 1 *</h2>
+                    </div>
+                </div>
+                <div class="carousel-item">
+                    <img class="w-100" src="{% static 'web/img/carousel-2.jpg' %}" alt="Image">
+                    <div class="carousel-caption d-flex flex-column align-items-center justify-content-center">
+                        <h2 class="text-primary font-weight-medium m-0">Taste Nepal's Favorite Bites</h2>
+                        <h1 class="text-white m-0 carousel-main-title">Fresh Dishes Every Day</h1>
+                        <h2 class="text-white m-0">* OPENING SOON ON NEPALI NEW YEAR BAISAKH 1 *</h2>
+                    </div>
+                </div>
+            </div>
+            <a class="carousel-control-prev" href="#blog-carousel" data-slide="prev">
+                <span class="carousel-control-prev-icon"></span>
+            </a>
+            <a class="carousel-control-next" href="#blog-carousel" data-slide="next">
+                <span class="carousel-control-next-icon"></span>
+            </a>
+        </div>
+    </div>
+    <!-- Carousel End -->
+
+
+    <!-- About Start -->
+    <div class="container-fluid py-5">
+        <div class="container">
+            <div class="section-title">
+                <h4 class="text-primary text-uppercase" style="letter-spacing: 5px;">About Us</h4>
+                <h1 class="display-4">Opening Soon on Baisakh 1</h1>
+            </div>
+            <div class="row">
+                <div class="col-lg-4 py-0 py-lg-5">
+                    <h1 class="mb-3">Our Story</h1>
+                    <h5 class="mb-3">Built with Nepali entrepreneurial spirit, Pakoda By Kilo is starting with a clear plan and a customer-first food experience.</h5>
+                    <div class="story-timeline">
+                        <div class="story-step">
+                            <h6>First Launch (Now)</h6>
+                            <p>Launching soon on Baisakh 1 with fresh pizza, pakoda, tea, sausages, and many more tasty food items.</p>
+                        </div>
+                        <div class="story-step">
+                            <h6>Service Promise</h6>
+                            <p>Fast, hygienic, and affordable food with multiple delivery options and quick support for every order.</p>
+                        </div>
+                        <div class="story-step">
+                            <h6>City Expansion</h6>
+                            <p>Step-by-step expansion to wider city delivery while keeping quality high and prices economic.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 py-5 py-lg-0" style="min-height: 500px;">
+                    <div class="position-relative h-100">
+                        <img class="position-absolute w-100 h-100" src="{% static 'web/img/about.png' %}" style="object-fit: cover;">
+                    </div>
+                </div>
+                <div class="col-lg-4 py-0 py-lg-5">
+                    <h1 class="mb-3">Our Vision</h1>
+                    <p>Our vision is to build a trusted Nepali food brand that serves tasty, fresh, and hygienic meals at fair prices, while creating jobs and supporting local entrepreneurship.</p>
+                    <p class="vision-point"><i class="fa fa-check text-primary mr-3"></i>Launching from Baisakh 1 with quality-first service</p>
+                    <p class="vision-point"><i class="fa fa-check text-primary mr-3"></i>Quick and economic delivery options across the city</p>
+                    <p class="vision-point"><i class="fa fa-check text-primary mr-3"></i>Comfortable dine-in experience for snacks, food, and tea</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- About End -->
+
+
+
+    <!-- Service Start -->
+    <div class="container-fluid pt-5">
+        <div class="container">
+            <div class="section-title">
+                <h4 class="text-primary text-uppercase" style="letter-spacing: 5px;">Our Categories</h4>
+                <h1 class="display-4">Explore Our Food Range</h1>
+            </div>
+            <div class="row">
+                <div class="col-lg-6 mb-5">
+                    <div class="row align-items-center">
+                        <div class="col-sm-5">
+                            <img class="img-fluid mb-3 mb-sm-0" src="{% static 'web/img/service-1.jpg' %}" alt="">
+                        </div>
+                        <div class="col-sm-7">
+                            <h4><i class="fa fa-truck service-icon"></i>Dine-in/ Table Service</h4>
+                            <p class="m-0">Sit lorem ipsum et diam elitr est dolor sed duo. Guberg sea et et lorem dolor sed est sit
+                                invidunt, dolore tempor diam ipsum takima erat tempor</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6 mb-5">
+                    <div class="row align-items-center">
+                        <div class="col-sm-5">
+                            <img class="img-fluid mb-3 mb-sm-0" src="{% static 'web/img/service-2.jpg' %}" alt="">
+                        </div>
+                        <div class="col-sm-7">
+                            <h4><i class="fa fa-coffee service-icon"></i>Takeaway Service</h4>
+                            <p class="m-0">Sit lorem ipsum et diam elitr est dolor sed duo. Guberg sea et et lorem dolor sed est sit
+                                invidunt, dolore tempor diam ipsum takima erat tempor</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6 mb-5">
+                    <div class="row align-items-center">
+                        <div class="col-sm-5">
+                            <img class="img-fluid mb-3 mb-sm-0" src="{% static 'web/img/service-3.jpg' %}" alt="">
+                        </div>
+                        <div class="col-sm-7">
+                            <h4><i class="fa fa-award service-icon"></i>Online Delivery Service</h4>
+                            <p class="m-0">Sit lorem ipsum et diam elitr est dolor sed duo. Guberg sea et et lorem dolor sed est sit
+                                invidunt, dolore tempor diam ipsum takima erat tempor</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6 mb-5">
+                    <div class="row align-items-center">
+                        <div class="col-sm-5">
+                            <img class="img-fluid mb-3 mb-sm-0" src="{% static 'web/img/service-4.jpg' %}" alt="">
+                        </div>
+                        <div class="col-sm-7">
+                            <h4><i class="fa fa-table service-icon"></i>Bulk Order Service</h4>
+                            <p class="m-0">Sit lorem ipsum et diam elitr est dolor sed duo. Guberg sea et et lorem dolor sed est sit
+                                invidunt, dolore tempor diam ipsum takima erat tempor</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6 mb-5">
+                    <div class="row align-items-center">
+                        <div class="col-sm-5">
+                            <img class="img-fluid mb-3 mb-sm-0" src="{% static 'web/img/service-3.jpg' %}" alt="">
+                        </div>
+                        <div class="col-sm-7">
+                            <h4><i class="fa fa-award service-icon"></i>Quick Snacks & Beverages Service</h4>
+                            <p class="m-0">Sit lorem ipsum et diam elitr est dolor sed duo. Guberg sea et et lorem dolor sed est sit
+                                invidunt, dolore tempor diam ipsum takima erat tempor</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6 mb-5">
+                    <div class="row align-items-center">
+                        <div class="col-sm-5">
+                            <img class="img-fluid mb-3 mb-sm-0" src="{% static 'web/img/service-4.jpg' %}" alt="">
+                        </div>
+                        <div class="col-sm-7">
+                            <h4><i class="fa fa-table service-icon"></i>Phone Order Service</h4>
+                            <p class="m-0">Sit lorem ipsum et diam elitr est dolor sed duo. Guberg sea et et lorem dolor sed est sit
+                                invidunt, dolore tempor diam ipsum takima erat tempor</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Service End -->
+
+
+
+    <!-- Menu Start -->
+    <div class="container-fluid pt-5">
+        <div class="container">
+            <div class="section-title">
+                <h4 class="text-primary text-uppercase" style="letter-spacing: 5px;">Full Menu</h4>
+                <h1 class="display-4">100 Dummy Product Items</h1>
+            </div>
+            <div class="row">
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 01 - Pakoda</h6><p class="menu-grid-price">NPR 120</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 02 - Fast Food</h6><p class="menu-grid-price">NPR 130</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 03 - Snacks</h6><p class="menu-grid-price">NPR 140</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 04 - Pizza</h6><p class="menu-grid-price">NPR 150</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 05 - Main Course</h6><p class="menu-grid-price">NPR 160</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 06 - Appetizer</h6><p class="menu-grid-price">NPR 170</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-4.jpg' %}" alt=""><h6 class="menu-grid-name">Product 07 - Chiya</h6><p class="menu-grid-price">NPR 180</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/carousel-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 08 - Coffee</h6><p class="menu-grid-price">NPR 190</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 09 - Fresh Juice</h6><p class="menu-grid-price">NPR 200</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 10 - Drinks</h6><p class="menu-grid-price">NPR 210</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 11 - Pakoda</h6><p class="menu-grid-price">NPR 120</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 12 - Fast Food</h6><p class="menu-grid-price">NPR 130</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 13 - Snacks</h6><p class="menu-grid-price">NPR 140</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 14 - Pizza</h6><p class="menu-grid-price">NPR 150</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-4.jpg' %}" alt=""><h6 class="menu-grid-name">Product 15 - Main Course</h6><p class="menu-grid-price">NPR 160</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/carousel-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 16 - Appetizer</h6><p class="menu-grid-price">NPR 170</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 17 - Chiya</h6><p class="menu-grid-price">NPR 180</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 18 - Coffee</h6><p class="menu-grid-price">NPR 190</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 19 - Fresh Juice</h6><p class="menu-grid-price">NPR 200</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 20 - Drinks</h6><p class="menu-grid-price">NPR 210</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 21 - Pakoda</h6><p class="menu-grid-price">NPR 120</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 22 - Fast Food</h6><p class="menu-grid-price">NPR 130</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-4.jpg' %}" alt=""><h6 class="menu-grid-name">Product 23 - Snacks</h6><p class="menu-grid-price">NPR 140</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/carousel-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 24 - Pizza</h6><p class="menu-grid-price">NPR 150</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 25 - Main Course</h6><p class="menu-grid-price">NPR 160</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 26 - Appetizer</h6><p class="menu-grid-price">NPR 170</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 27 - Chiya</h6><p class="menu-grid-price">NPR 180</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 28 - Coffee</h6><p class="menu-grid-price">NPR 190</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 29 - Fresh Juice</h6><p class="menu-grid-price">NPR 200</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 30 - Drinks</h6><p class="menu-grid-price">NPR 210</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-4.jpg' %}" alt=""><h6 class="menu-grid-name">Product 31 - Pakoda</h6><p class="menu-grid-price">NPR 120</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/carousel-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 32 - Fast Food</h6><p class="menu-grid-price">NPR 130</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 33 - Snacks</h6><p class="menu-grid-price">NPR 140</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 34 - Pizza</h6><p class="menu-grid-price">NPR 150</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 35 - Main Course</h6><p class="menu-grid-price">NPR 160</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 36 - Appetizer</h6><p class="menu-grid-price">NPR 170</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 37 - Chiya</h6><p class="menu-grid-price">NPR 180</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 38 - Coffee</h6><p class="menu-grid-price">NPR 190</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-4.jpg' %}" alt=""><h6 class="menu-grid-name">Product 39 - Fresh Juice</h6><p class="menu-grid-price">NPR 200</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/carousel-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 40 - Drinks</h6><p class="menu-grid-price">NPR 210</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 41 - Pakoda</h6><p class="menu-grid-price">NPR 120</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 42 - Fast Food</h6><p class="menu-grid-price">NPR 130</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 43 - Snacks</h6><p class="menu-grid-price">NPR 140</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 44 - Pizza</h6><p class="menu-grid-price">NPR 150</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 45 - Main Course</h6><p class="menu-grid-price">NPR 160</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 46 - Appetizer</h6><p class="menu-grid-price">NPR 170</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-4.jpg' %}" alt=""><h6 class="menu-grid-name">Product 47 - Chiya</h6><p class="menu-grid-price">NPR 180</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/carousel-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 48 - Coffee</h6><p class="menu-grid-price">NPR 190</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 49 - Fresh Juice</h6><p class="menu-grid-price">NPR 200</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 50 - Drinks</h6><p class="menu-grid-price">NPR 210</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 51 - Pakoda</h6><p class="menu-grid-price">NPR 120</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 52 - Fast Food</h6><p class="menu-grid-price">NPR 130</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 53 - Snacks</h6><p class="menu-grid-price">NPR 140</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 54 - Pizza</h6><p class="menu-grid-price">NPR 150</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-4.jpg' %}" alt=""><h6 class="menu-grid-name">Product 55 - Main Course</h6><p class="menu-grid-price">NPR 160</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/carousel-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 56 - Appetizer</h6><p class="menu-grid-price">NPR 170</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 57 - Chiya</h6><p class="menu-grid-price">NPR 180</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 58 - Coffee</h6><p class="menu-grid-price">NPR 190</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 59 - Fresh Juice</h6><p class="menu-grid-price">NPR 200</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 60 - Drinks</h6><p class="menu-grid-price">NPR 210</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 61 - Pakoda</h6><p class="menu-grid-price">NPR 120</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 62 - Fast Food</h6><p class="menu-grid-price">NPR 130</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-4.jpg' %}" alt=""><h6 class="menu-grid-name">Product 63 - Snacks</h6><p class="menu-grid-price">NPR 140</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/carousel-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 64 - Pizza</h6><p class="menu-grid-price">NPR 150</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 65 - Main Course</h6><p class="menu-grid-price">NPR 160</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 66 - Appetizer</h6><p class="menu-grid-price">NPR 170</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 67 - Chiya</h6><p class="menu-grid-price">NPR 180</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 68 - Coffee</h6><p class="menu-grid-price">NPR 190</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 69 - Fresh Juice</h6><p class="menu-grid-price">NPR 200</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 70 - Drinks</h6><p class="menu-grid-price">NPR 210</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-4.jpg' %}" alt=""><h6 class="menu-grid-name">Product 71 - Pakoda</h6><p class="menu-grid-price">NPR 120</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/carousel-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 72 - Fast Food</h6><p class="menu-grid-price">NPR 130</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 73 - Snacks</h6><p class="menu-grid-price">NPR 140</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 74 - Pizza</h6><p class="menu-grid-price">NPR 150</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 75 - Main Course</h6><p class="menu-grid-price">NPR 160</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 76 - Appetizer</h6><p class="menu-grid-price">NPR 170</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 77 - Chiya</h6><p class="menu-grid-price">NPR 180</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 78 - Coffee</h6><p class="menu-grid-price">NPR 190</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-4.jpg' %}" alt=""><h6 class="menu-grid-name">Product 79 - Fresh Juice</h6><p class="menu-grid-price">NPR 200</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/carousel-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 80 - Drinks</h6><p class="menu-grid-price">NPR 210</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 81 - Pakoda</h6><p class="menu-grid-price">NPR 120</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 82 - Fast Food</h6><p class="menu-grid-price">NPR 130</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 83 - Snacks</h6><p class="menu-grid-price">NPR 140</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 84 - Pizza</h6><p class="menu-grid-price">NPR 150</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 85 - Main Course</h6><p class="menu-grid-price">NPR 160</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 86 - Appetizer</h6><p class="menu-grid-price">NPR 170</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-4.jpg' %}" alt=""><h6 class="menu-grid-name">Product 87 - Chiya</h6><p class="menu-grid-price">NPR 180</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/carousel-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 88 - Coffee</h6><p class="menu-grid-price">NPR 190</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 89 - Fresh Juice</h6><p class="menu-grid-price">NPR 200</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 90 - Drinks</h6><p class="menu-grid-price">NPR 210</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 91 - Pakoda</h6><p class="menu-grid-price">NPR 120</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 92 - Fast Food</h6><p class="menu-grid-price">NPR 130</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 93 - Snacks</h6><p class="menu-grid-price">NPR 140</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 94 - Pizza</h6><p class="menu-grid-price">NPR 150</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-4.jpg' %}" alt=""><h6 class="menu-grid-name">Product 95 - Main Course</h6><p class="menu-grid-price">NPR 160</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/carousel-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 96 - Appetizer</h6><p class="menu-grid-price">NPR 170</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 97 - Chiya</h6><p class="menu-grid-price">NPR 180</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-2.jpg' %}" alt=""><h6 class="menu-grid-name">Product 98 - Coffee</h6><p class="menu-grid-price">NPR 190</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/menu-3.jpg' %}" alt=""><h6 class="menu-grid-name">Product 99 - Fresh Juice</h6><p class="menu-grid-price">NPR 200</p></div></div>
+                <div class="col-6 col-md-4 col-lg-2 mb-3"><div class="menu-grid-card"><img class="menu-grid-image" src="{% static 'web/img/service-1.jpg' %}" alt=""><h6 class="menu-grid-name">Product 100 - Drinks</h6><p class="menu-grid-price">NPR 210</p></div></div>
+            </div>
+        </div>
+    </div>
+    <!-- Menu End -->
+
+
+    <!-- Reservation Start -->
+    <div class="container-fluid my-5">
+        <div class="container">
+            <div class="reservation position-relative overlay-top overlay-bottom">
+                <div class="row align-items-center">
+                    <div class="col-lg-6 my-5 my-lg-0">
+                        <div class="p-5">
+                            <div class="mb-4">
+                                <h1 class="display-3 text-primary">30% OFF</h1>
+                                <h1 class="text-white">For Online Reservation</h1>
+                            </div>
+                            <p class="text-white">Lorem justo clita erat lorem labore ea, justo dolor lorem ipsum ut sed eos,
+                                ipsum et dolor kasd sit ea justo. Erat justo sed sed diam. Ea et erat ut sed diam sea</p>
+                            <ul class="list-inline text-white m-0">
+                                <li class="py-2"><i class="fa fa-check text-primary mr-3"></i>Lorem ipsum dolor sit amet</li>
+                                <li class="py-2"><i class="fa fa-check text-primary mr-3"></i>Lorem ipsum dolor sit amet</li>
+                                <li class="py-2"><i class="fa fa-check text-primary mr-3"></i>Lorem ipsum dolor sit amet</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="text-center p-5" style="background: rgba(51, 33, 29, .8);">
+                            <h1 class="text-white mb-4 mt-5">Book Your Table</h1>
+                            <form class="mb-5">
+                                <div class="form-group">
+                                    <input type="text" class="form-control bg-transparent border-primary p-4" placeholder="Name"
+                                        required="required" />
+                                </div>
+                                <div class="form-group">
+                                    <input type="email" class="form-control bg-transparent border-primary p-4" placeholder="Email"
+                                        required="required" />
+                                </div>
+                                <div class="form-group">
+                                    <div class="date" id="date" data-target-input="nearest">
+                                        <input type="text" class="form-control bg-transparent border-primary p-4 datetimepicker-input" placeholder="Date" data-target="#date" data-toggle="datetimepicker"/>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <div class="time" id="time" data-target-input="nearest">
+                                        <input type="text" class="form-control bg-transparent border-primary p-4 datetimepicker-input" placeholder="Time" data-target="#time" data-toggle="datetimepicker"/>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <select class="custom-select bg-transparent border-primary px-4" style="height: 49px;">
+                                        <option selected>Person</option>
+                                        <option value="1">Person 1</option>
+                                        <option value="2">Person 2</option>
+                                        <option value="3">Person 3</option>
+                                        <option value="3">Person 4</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <button class="btn btn-primary btn-block font-weight-bold py-3" type="submit">Book Now</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Reservation End -->
+
+
+    <!-- Testimonial Start -->
+    <div class="container-fluid py-5">
+        <div class="container">
+            <div class="section-title">
+                <h4 class="text-primary text-uppercase" style="letter-spacing: 5px;">Leadership Team</h4>
+            </div>
+            <div class="row">
+                <div class="col-md-6 col-lg-4 mb-4">
+                <div class="testimonial-item">
+                    <div class="d-flex align-items-center mb-3">
+                        <img class="img-fluid" src="{% static 'web/img/testimonial-2.jpg' %}" alt="">
+                        <div class="ml-3">
+                            <h4>Mr. Shiv Mahato</h4>
+                            <i>Co-Owner</i>
+                        </div>
+                    </div>
+                    <p class="m-0">Focused on operations, customer care, and maintaining consistent taste and hygiene across all food categories.</p>
+                </div>
+                </div>
+                <div class="col-md-6 col-lg-4 mb-4">
+                <div class="testimonial-item">
+                    <div class="d-flex align-items-center mb-3">
+                        <img class="img-fluid" src="{% static 'web/img/testimonial-2.jpg' %}" alt="">
+                        <div class="ml-3">
+                            <h4>Mr. Raaz Mahato</h4>
+                            <i>Co-Owner</i>
+                        </div>
+                    </div>
+                    <p class="m-0">Leads menu planning and service development with a vision for affordable, quality food and quick delivery.</p>
+                </div>
+                </div>
+                <div class="col-md-6 col-lg-4 mb-4">
+                <div class="testimonial-item">
+                    <div class="d-flex align-items-center mb-3">
+                        <img class="img-fluid" src="{% static 'web/img/testimonial-2.jpg' %}" alt="">
+                        <div class="ml-3">
+                            <h4>Mr. Suraj Mahato</h4>
+                            <i>Founder</i>
+                        </div>
+                    </div>
+                    <p class="m-0">Driving brand growth, community trust, and the long-term mission of making Pakoda By Kilo a citywide favorite.</p>
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Testimonial End -->
+{% endblock %}
+
+{% block extra_scripts %}
+    <script>
+        var link = document.createElement("link");
+        link.href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css";
+        link.rel = "stylesheet";
+        link.type = "text/css";
+        document.head.appendChild(link);
+    </script>
+{% endblock %}

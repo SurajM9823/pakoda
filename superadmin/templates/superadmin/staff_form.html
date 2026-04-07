@@ -1,0 +1,22 @@
+{% extends "superadmin/base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block heading %}{{ title }}{% endblock %}
+{% block content %}
+<p class="muted"><a href="{% url 'superadmin:restaurant_detail' restaurant.slug %}">← {{ restaurant.name }}</a></p>
+<p class="muted">Creates a Django user and links them to <strong>{{ restaurant.name }}</strong>. Use this account for future restaurant-scoped APIs and pages (this superadmin UI remains superuser-only).</p>
+<form method="post" class="card" style="max-width:480px;">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+    <ul class="messages">{% for e in form.non_field_errors %}<li class="error">{{ e }}</li>{% endfor %}</ul>
+    {% endif %}
+    {% for field in form %}
+    <div class="form-group">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {{ field.errors }}
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary">Create user</button>
+    <a class="btn" href="{% url 'superadmin:restaurant_detail' restaurant.slug %}">Cancel</a>
+</form>
+{% endblock %}

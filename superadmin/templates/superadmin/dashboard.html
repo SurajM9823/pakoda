@@ -1,0 +1,28 @@
+{% extends "superadmin/base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block heading %}Dashboard{% endblock %}
+{% block content %}
+<p class="muted">Create restaurants, fiscal years, and restaurant users. Use <strong>Scope data</strong> to filter future lists by one restaurant (for your own queries using <code>request.active_restaurant</code>).</p>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1rem;margin-top:1.5rem;">
+    <div class="card" style="margin:0;">
+        <div class="muted" style="font-size:0.8rem;">Restaurants</div>
+        <div style="font-size:1.75rem;font-weight:600;">{{ restaurant_count }}</div>
+    </div>
+    <div class="card" style="margin:0;">
+        <div class="muted" style="font-size:0.8rem;">Active restaurants</div>
+        <div style="font-size:1.75rem;font-weight:600;">{{ active_restaurant_count }}</div>
+    </div>
+    <div class="card" style="margin:0;">
+        <div class="muted" style="font-size:0.8rem;">Active staff links</div>
+        <div style="font-size:1.75rem;font-weight:600;">{{ staff_count }}</div>
+    </div>
+    <div class="card" style="margin:0;">
+        <div class="muted" style="font-size:0.8rem;">Active fiscal years</div>
+        <div style="font-size:1.75rem;font-weight:600;">{{ fy_count }}</div>
+    </div>
+</div>
+<p style="margin-top:1.5rem;">
+    <a class="btn btn-primary" href="{% url 'superadmin:restaurant_create' %}">New restaurant</a>
+    <a class="btn" href="{% url 'superadmin:restaurant_list' %}">All restaurants</a>
+</p>
+{% endblock %}

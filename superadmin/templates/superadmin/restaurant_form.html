@@ -1,0 +1,22 @@
+{% extends "superadmin/base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block heading %}{{ title }}{% endblock %}
+{% block content %}
+<form method="post" class="card" style="max-width:520px;">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="form-group">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<p class="muted" style="margin:0.25rem 0 0;font-size:0.8rem;">{{ field.help_text }}</p>{% endif %}
+        {{ field.errors }}
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary">Save</button>
+    {% if restaurant %}
+    <a class="btn" href="{% url 'superadmin:restaurant_detail' restaurant.slug %}">Cancel</a>
+    {% else %}
+    <a class="btn" href="{% url 'superadmin:restaurant_list' %}">Cancel</a>
+    {% endif %}
+</form>
+{% endblock %}
